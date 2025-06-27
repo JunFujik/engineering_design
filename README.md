@@ -1,26 +1,23 @@
-勤怠管理システム
+# 勤怠管理システム
 Flask + Svelte + SQLite + SQLAlchemy を使用したシンプルな勤怠管理システムです。
-機能
+## 機能
 
 アカウント登録・ログイン
 QRコード生成（日付とユーザー名）
 出勤・退勤記録
 勤怠履歴表示
 
-セットアップ
+## セットアップ
 バックエンド (Flask)
-bashcd backend
-pip install -r requirements.txt
-python app.py
 サーバーは http://localhost:5000 で起動します。
 フロントエンド (Svelte)
-bashcd frontend
-npm install
-npm run dev
 フロントエンドは http://localhost:3000 で起動します。
-使用方法
 
+## 使用方法
+docker compose up -d --build
+を実行した後、
 ブラウザで http://localhost:3000 にアクセス
+
 新規登録でアカウントを作成
 ログイン後、以下の機能が利用可能：
 
