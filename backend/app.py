@@ -6,17 +6,20 @@ import bcrypt
 import qrcode
 import io
 import base64
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'your-secret-key-change-in-production'
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)  # トークンの有効期限を明示的に設定
 
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
-CORS(app)
+
+# CORS設定を更新
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "http://localhost:5173"]}})
 
 # Models
 class User(db.Model):
@@ -41,6 +44,11 @@ class Attendance(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     user = db.relationship('User', backref=db.backref('attendances', lazy=True))
+
+# Health check route
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({'status': 'ok'}), 200
 
 # Error handlers
 @app.errorhandler(422)
@@ -94,6 +102,7 @@ def register():
         return jsonify({'message': 'User registered successfully'}), 201
     except Exception as e:
         print(f"Registration error: {e}")
+        db.session.rollback()  # ロールバックを追加
         return jsonify({'error': 'Registration failed'}), 500
 
 @app.route('/api/login', methods=['POST'])
@@ -112,7 +121,8 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
-            access_token = create_access_token(identity=user.id)
+            # user.idを文字列に変換して渡す
+            access_token = create_access_token(identity=str(user.id))
             return jsonify({
                 'access_token': access_token,
                 'user': {
@@ -132,7 +142,7 @@ def login():
 def profile():
     try:
         user_id = get_jwt_identity()
-        user = User.query.get(user_id)
+        user = User.query.get(int(user_id))  # 文字列をintに変換
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -154,7 +164,7 @@ def generate_qr():
         user_id = get_jwt_identity()
         print(f"User ID from token: {user_id}")
         
-        user = User.query.get(user_id)
+        user = User.query.get(int(user_id))  # 文字列をintに変換
         
         if not user:
             print(f"User not found for ID: {user_id}")
@@ -229,7 +239,7 @@ def test_qr():
 @jwt_required()
 def check_in():
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())  # 文字列をintに変換
         today = date.today()
         
         existing_attendance = Attendance.query.filter_by(
@@ -254,13 +264,14 @@ def check_in():
         return jsonify({'message': 'Checked in successfully'}), 200
     except Exception as e:
         print(f"Check-in error: {e}")
+        db.session.rollback()
         return jsonify({'error': 'Check-in failed'}), 500
 
 @app.route('/api/check-out', methods=['POST'])
 @jwt_required()
 def check_out():
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())  # 文字列をintに変換
         today = date.today()
         
         attendance = Attendance.query.filter_by(
@@ -280,13 +291,14 @@ def check_out():
         return jsonify({'message': 'Checked out successfully'}), 200
     except Exception as e:
         print(f"Check-out error: {e}")
+        db.session.rollback()
         return jsonify({'error': 'Check-out failed'}), 500
 
 @app.route('/api/attendance', methods=['GET'])
 @jwt_required()
 def get_attendance():
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())  # 文字列をintに変換
         attendances = Attendance.query.filter_by(user_id=user_id).order_by(Attendance.date.desc()).all()
         
         result = []
@@ -306,4 +318,5 @@ def get_attendance():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        print("Database tables created successfully")
     app.run(host='0.0.0.0', port=5000, debug=True)
