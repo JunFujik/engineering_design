@@ -11,6 +11,7 @@
 
   onMount(() => {
     token = localStorage.getItem('token');
+    console.log('Token from localStorage:', token ? 'exists' : 'not found');
     if (token) {
       checkAuth();
     }
@@ -18,16 +19,21 @@
 
   async function checkAuth() {
     try {
+      console.log('Checking authentication...');
       const response = await fetch('http://localhost:5000/api/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('Auth check response status:', response.status);
+      
       if (response.ok) {
         user = await response.json();
         isAuthenticated = true;
+        console.log('Authentication successful:', user);
       } else {
+        console.log('Authentication failed, clearing token');
         localStorage.removeItem('token');
         token = null;
         isAuthenticated = false;
@@ -41,6 +47,7 @@
   }
 
   function handleLogin(event) {
+    console.log('Login event received:', event.detail);
     token = event.detail.token;
     user = event.detail.user;
     localStorage.setItem('token', token);
@@ -48,6 +55,7 @@
   }
 
   function handleLogout() {
+    console.log('Logging out...');
     localStorage.removeItem('token');
     token = null;
     user = null;
@@ -77,3 +85,16 @@
     {/if}
   {/if}
 </main>
+
+<style>
+  main {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+</style>
