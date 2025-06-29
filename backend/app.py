@@ -8,6 +8,7 @@ import io
 import base64
 from datetime import datetime, date, timedelta
 import os
+import hashlib
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
@@ -176,9 +177,17 @@ def generate_qr():
         
         print(f"Generating QR for user {user.username}, date: {target_date}")
         
-        # QR Code data: username and date
-        qr_data = f"{user.username}:{target_date}"
-        
+        # QRコードに含める元のデータを作成
+        original_data = f"{user.username}:{target_date}"
+
+        # 元のデータをSHA-256でハッシュ化する
+        hash_object = hashlib.sha256()
+        hash_object.update(original_data.encode('utf-8'))
+        hashed_data = hash_object.hexdigest()
+
+        # QR Code data: Hashed value
+        qr_data = hashed_data
+
         # Generate QR code
         qr = qrcode.QRCode(
             version=1,
