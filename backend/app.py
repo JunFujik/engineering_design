@@ -359,6 +359,70 @@ def get_all_users():
         print(f"Get all users error: {e}")
         return jsonify({'error': 'Failed to get users'}), 500
 
+
+# qrコード読み取り出勤登録機能
+@app.route('/api/admin/check-in-by-qr', methods=['POST'])
+@jwt_required()
+def admin_check_in_by_qr():
+    """
+    管理者権限で、QRコードから読み取ったユーザー名を使って出勤登録を行う
+    """
+    try:
+        # このAPIは管理者のみ実行可能
+        admin_user_id = int(get_jwt_identity())
+        current_admin = User.query.get(admin_user_id)
+        if not current_admin or not current_admin.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+
+        data = request.get_json()
+        username = data.get('username')
+
+        if not username:
+            return jsonify({'error': 'Username is required from QR code'}), 400
+
+        # ユーザー名でユーザーを検索
+        target_user = User.query.filter_by(username=username).first()
+        if not target_user:
+            return jsonify({'error': f"ユーザー「{username}」が見つかりません"}), 404
+
+        today = date.today()
+
+        # 既に出勤記録があるか確認
+        existing_attendance = Attendance.query.filter_by(
+            user_id=target_user.id,
+            date=today
+        ).first()
+
+        if existing_attendance and existing_attendance.check_in:
+            return jsonify({'message': f"{username}は既に出勤済みです。", 'status': 'already_checked_in'}), 200
+
+        # 出勤記録を更新または新規作成
+        if existing_attendance:
+            existing_attendance.check_in = datetime.now()
+            existing_attendance.is_present = True
+        else:
+            new_attendance = Attendance(
+                user_id=target_user.id,
+                date=today,
+                check_in=datetime.now(),
+                is_present=True,
+                class_count=0  # デフォルトの授業数
+            )
+            db.session.add(new_attendance)
+
+        db.session.commit()
+        return jsonify({
+            'message': f"{username}さんの出勤を記録しました。",
+            'user': target_user.username,
+            'check_in_time': datetime.now().isoformat()
+        }), 200
+
+    except Exception as e:
+        print(f"Admin Check-in by QR error: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'QRコードによる出勤処理に失敗しました。'}), 500
+
+
 # 全ユーザーの勤怠履歴取得（管理者のみ）
 @app.route('/api/admin/attendance', methods=['GET'])
 @jwt_required()

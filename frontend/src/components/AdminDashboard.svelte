@@ -12,6 +12,10 @@
   let message = '';
   let error = '';
   let activeTab = 'users';
+  let qrInputData = '';
+  let qrMessage = '';
+  let qrError = '';
+  let isQrLoading = false;
   
   // 新規勤怠記録追加用
   let newAttendance = {
@@ -180,6 +184,50 @@
   function logout() {
     dispatch('logout');
   }
+
+
+
+  async function handleQrSubmit() {
+    if (!qrInputData.trim()) {
+        qrError = "QRコードデータがありません";
+        return;
+    }
+
+    isQrLoading = true;
+    qrMessage = '';
+    qrError = '';
+
+    try {
+        const response = await fetch('http://localhost:5000/api/admin/check-in-by-qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ username: qrInputData })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            qrMessage = result.message;
+            // 成功したら勤怠リストを更新
+            if (activeTab === 'attendance') {
+                loadAllAttendance();
+            }
+        } else {
+            qrError = result.error || '処理に失敗しました';
+        }
+
+    } catch (err) {
+        console.error('QR Check-in error:', err);
+        qrError = 'サーバーへの接続に失敗しました。';
+    } finally {
+        isQrLoading = false;
+        // 入力欄をクリアして次のスキャンに備える
+        qrInputData = '';
+    }
+}
 </script>
 
 <div>
@@ -204,6 +252,14 @@
 
   <!-- タブ切り替え -->
   <div style="margin: 20px 0;">
+    <button
+        class:active={activeTab === 'qr_scan'}
+        on:click={() => activeTab = 'qr_scan'}
+        style="padding: 10px 20px; border: 1px solid #ccc; background: {activeTab === 'qr_scan' ? '#007bff' : 'white'}; color: {activeTab === 'qr_scan' ? 'white' : 'black'};"
+    >
+        QR受付
+    </button>
+    
     <button 
       class:active={activeTab === 'users'} 
       on:click={() => activeTab = 'users'}
@@ -226,6 +282,42 @@
       勤怠追加
     </button>
   </div>
+
+
+  {#if activeTab === 'qr_scan'}
+    <h3>QRコード出勤受付</h3>
+    <p>下の入力欄にフォーカスを当てて、ユーザーのQRコードをスキャンしてください。</p>
+    <p>（QRコードの内容はユーザー名であることを想定しています）</p>
+
+    <form on:submit|preventDefault={handleQrSubmit} style="margin-top: 20px;">
+        <input
+            type="text"
+            bind:value={qrInputData}
+            placeholder="QRコードリーダーからの入力を待機中..."
+            autofocus
+            disabled={isQrLoading}
+            style="width: 80%; padding: 10px; font-size: 1.2rem;"
+        />
+        <button
+            type="submit"
+            disabled={isQrLoading}
+            style="padding: 10px 20px; font-size: 1.2rem; margin-left: 10px;"
+        >
+            {isQrLoading ? '処理中...' : '手動実行'}
+        </button>
+    </form>
+
+    {#if qrMessage}
+        <div style="color: green; margin: 15px 0; padding: 10px; background-color: #d4edda; border-radius: 4px;">
+            {qrMessage}
+        </div>
+    {/if}
+    {#if qrError}
+        <div style="color: red; margin: 15px 0; padding: 10px; background-color: #f8d7da; border-radius: 4px;">
+            {qrError}
+        </div>
+    {/if}
+{/if}
 
   {#if activeTab === 'users'}
     <h3>ユーザー一覧</h3>
