@@ -43,7 +43,11 @@ class Attendance(db.Model):
     check_in = db.Column(db.DateTime)
     check_out = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+        # 出勤したかどうかを示すフラグ (True: 出勤, False: 欠席)
+    is_present = db.Column(db.Boolean, default=True, nullable=False)
+    # その日の授業数
+    class_count = db.Column(db.Integer, default=0, nullable=False)
+
     user = db.relationship('User', backref=db.backref('attendances', lazy=True))
 
 # Health check route
