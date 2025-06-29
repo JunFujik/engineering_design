@@ -36,6 +36,8 @@ class User(db.Model):
     def check_password(self, password):
         return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
 
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+
 class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -43,13 +45,8 @@ class Attendance(db.Model):
     check_in = db.Column(db.DateTime)
     check_out = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-        # 出勤したかどうかを示すフラグ (True: 出勤, False: 欠席)
-    is_present = db.Column(db.Boolean, default=True, nullable=False)
-    # その日の授業数
-    class_count = db.Column(db.Integer, default=0, nullable=False)
 
     user = db.relationship('User', backref=db.backref('attendances', lazy=True))
-
 # Health check route
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -133,7 +130,8 @@ def login():
                 'user': {
                     'id': user.id,
                     'username': user.username,
-                    'email': user.email
+                    'email': user.email,
+                    'is_admin': user.is_admin  # 管理者情報を追加
                 }
             }), 200
         
@@ -155,7 +153,8 @@ def profile():
         return jsonify({
             'id': user.id,
             'username': user.username,
-            'email': user.email
+            'email': user.email,
+            'is_admin': user.is_admin  # 管理者情報を追加
         }), 200
     except Exception as e:
         print(f"Profile error: {e}")
@@ -327,9 +326,186 @@ def get_attendance():
     except Exception as e:
         print(f"Get attendance error: {e}")
         return jsonify({'error': 'Failed to get attendance'}), 500
+    
+
+
+
+
+
+# 以降管理者限定
+@app.route('/api/admin/users', methods=['GET'])
+@jwt_required()
+def get_all_users():
+    try:
+        user_id = int(get_jwt_identity())
+        current_user = User.query.get(user_id)
+        
+        if not current_user or not current_user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        users = User.query.all()
+        result = []
+        for user in users:
+            result.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'is_admin': user.is_admin,
+                'created_at': user.created_at.isoformat()
+            })
+        
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"Get all users error: {e}")
+        return jsonify({'error': 'Failed to get users'}), 500
+
+# 全ユーザーの勤怠履歴取得（管理者のみ）
+@app.route('/api/admin/attendance', methods=['GET'])
+@jwt_required()
+def get_all_attendance():
+    try:
+        user_id = int(get_jwt_identity())
+        current_user = User.query.get(user_id)
+        
+        if not current_user or not current_user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        # URLパラメータからuser_idを取得（オプション）
+        target_user_id = request.args.get('user_id', type=int)
+        
+        if target_user_id:
+            attendances = Attendance.query.filter_by(user_id=target_user_id).order_by(Attendance.date.desc()).all()
+        else:
+            attendances = Attendance.query.join(User).order_by(Attendance.date.desc()).all()
+        
+        result = []
+        for attendance in attendances:
+            result.append({
+                'id': attendance.id,
+                'user_id': attendance.user_id,
+                'username': attendance.user.username,
+                'date': attendance.date.isoformat(),
+                'check_in': attendance.check_in.isoformat() if attendance.check_in else None,
+                'check_out': attendance.check_out.isoformat() if attendance.check_out else None,
+                'is_present': attendance.is_present,
+                'class_count': attendance.class_count
+            })
+        
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"Get all attendance error: {e}")
+        return jsonify({'error': 'Failed to get attendance'}), 500
+
+# 管理者が勤怠記録を追加/編集（管理者のみ）
+@app.route('/api/admin/attendance', methods=['POST'])
+@jwt_required()
+def admin_add_attendance():
+    try:
+        user_id = int(get_jwt_identity())
+        current_user = User.query.get(user_id)
+        
+        if not current_user or not current_user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        data = request.get_json()
+        target_user_id = data.get('user_id')
+        attendance_date = datetime.strptime(data.get('date'), '%Y-%m-%d').date()
+        check_in_str = data.get('check_in')
+        check_out_str = data.get('check_out')
+        is_present = data.get('is_present', True)
+        class_count = data.get('class_count', 0)
+        
+        if not target_user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # 既存の記録があるかチェック
+        existing_attendance = Attendance.query.filter_by(
+            user_id=target_user_id,
+            date=attendance_date
+        ).first()
+        
+        check_in = None
+        check_out = None
+        
+        if check_in_str:
+            check_in = datetime.fromisoformat(check_in_str.replace('Z', '+00:00'))
+        if check_out_str:
+            check_out = datetime.fromisoformat(check_out_str.replace('Z', '+00:00'))
+        
+        if existing_attendance:
+            # 既存の記録を更新
+            existing_attendance.check_in = check_in
+            existing_attendance.check_out = check_out
+            existing_attendance.is_present = is_present
+            existing_attendance.class_count = class_count
+        else:
+            # 新しい記録を作成
+            attendance = Attendance(
+                user_id=target_user_id,
+                date=attendance_date,
+                check_in=check_in,
+                check_out=check_out,
+                is_present=is_present,
+                class_count=class_count
+            )
+            db.session.add(attendance)
+        
+        db.session.commit()
+        return jsonify({'message': 'Attendance record saved successfully'}), 200
+    except Exception as e:
+        print(f"Admin add attendance error: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to save attendance record'}), 500
+
+# 管理者が勤怠記録を削除（管理者のみ）
+@app.route('/api/admin/attendance/<int:attendance_id>', methods=['DELETE'])
+@jwt_required()
+def admin_delete_attendance(attendance_id):
+    try:
+        user_id = int(get_jwt_identity())
+        current_user = User.query.get(user_id)
+        
+        if not current_user or not current_user.is_admin:
+            return jsonify({'error': 'Admin access required'}), 403
+        
+        attendance = Attendance.query.get(attendance_id)
+        if not attendance:
+            return jsonify({'error': 'Attendance record not found'}), 404
+        
+        db.session.delete(attendance)
+        db.session.commit()
+        
+        return jsonify({'message': 'Attendance record deleted successfully'}), 200
+    except Exception as e:
+        print(f"Admin delete attendance error: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to delete attendance record'}), 500
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         print("Database tables created successfully")
+        
+        # 管理者アカウントが存在しない場合は作成
+        admin_user = User.query.filter_by(username='admin').first()
+        if not admin_user:
+            admin_user = User(
+                username='admin',
+                email='admin@example.com',
+                is_admin=True
+            )
+            admin_user.set_password('admin')  # パスワードを'admin'に修正
+            db.session.add(admin_user)
+            db.session.commit()
+            print("Admin user created: username=admin, password=admin")
+        else:
+            print("Admin user already exists")
+            
     app.run(host='0.0.0.0', port=5000, debug=True)

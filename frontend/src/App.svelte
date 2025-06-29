@@ -3,6 +3,7 @@
   import Login from './components/Login.svelte';
   import Register from './components/Register.svelte';
   import Dashboard from './components/Dashboard.svelte';
+  import AdminDashboard from './components/AdminDashboard.svelte';
 
   let currentView = 'login';
   let isAuthenticated = false;
@@ -74,9 +75,12 @@
 
 <main>
   <h1>勤怠管理システム</h1>
-  
   {#if isAuthenticated}
-    <Dashboard {user} {token} on:logout={handleLogout} />
+    {#if user && user.is_admin}
+      <AdminDashboard {user} {token} on:logout={handleLogout} />
+    {:else}
+      <Dashboard {user} {token} on:logout={handleLogout} />
+    {/if}
   {:else}
     {#if currentView === 'login'}
       <Login on:login={handleLogin} on:showRegister={showRegister} />
