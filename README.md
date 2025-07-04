@@ -4,7 +4,7 @@ Flask + Svelte + SQLite + SQLAlchemy を使用した勤怠管理システム
 ## 機能
 
 - メールに対して「User名+日付」を格納したQRコードを送信する
-- QRコードをSQLiteに打刻する
+- QRコードを付属のORMで読み込んだ場合、DBに打刻する
 
 ## セットアップ
 バックエンド (Flask)
