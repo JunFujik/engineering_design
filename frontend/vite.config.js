@@ -12,5 +12,14 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  optimizeDeps: {
+    exclude: ['svelte-navigator']
+  },
+  build: {
+    target: 'esnext'
+  },
+  esbuild: {
+    target: 'esnext'
   }
 })

@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///data/attendance.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////data/attendance.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database with app
@@ -19,6 +19,9 @@ from models import User, Attendance
 
 # Import routes after models
 from routes import register_routes
+
+# Create database directory if it doesn't exist
+os.makedirs('/data', exist_ok=True)
 
 # Create tables
 with app.app_context():
