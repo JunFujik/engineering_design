@@ -7,6 +7,9 @@ import os
 app = Flask(__name__)
 CORS(app)
 
+# Create database directory if it doesn't exist
+os.makedirs('/data', exist_ok=True)
+
 # Database configuration
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////data/attendance.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -20,12 +23,14 @@ from models import User, Attendance
 # Import routes after models
 from routes import register_routes
 
-# Create database directory if it doesn't exist
-os.makedirs('/data', exist_ok=True)
-
-# Create tables
+# Create tables and ensure database is initialized
 with app.app_context():
-    db.create_all()
+    try:
+        # This will create the database file if it doesn't exist
+        db.create_all()
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating database tables: {e}")
 
 # Register all routes
 register_routes(app)

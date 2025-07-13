@@ -45,6 +45,14 @@ class QRService:
         smtp_password = os.getenv('SMTP_PASSWORD', '')
         from_email = os.getenv('FROM_EMAIL', smtp_username)
         
+        # Debug: Print environment variables (without password)
+        print(f"DEBUG - Email Configuration:")
+        print(f"  SMTP_SERVER: {smtp_server}")
+        print(f"  SMTP_PORT: {smtp_port}")
+        print(f"  SMTP_USERNAME: {smtp_username}")
+        print(f"  SMTP_PASSWORD: {'*' * len(smtp_password) if smtp_password else 'NOT SET'}")
+        print(f"  FROM_EMAIL: {from_email}")
+        
         if not smtp_username or not smtp_password:
             raise ValueError("Email configuration not set. Please set SMTP_USERNAME and SMTP_PASSWORD environment variables.")
         
@@ -79,10 +87,13 @@ class QRService:
         
         # Send email
         try:
+            print(f"DEBUG - Attempting to connect to {smtp_server}:{smtp_port}")
             with smtplib.SMTP(smtp_server, smtp_port) as server:
                 server.starttls()
+                print(f"DEBUG - Attempting to login with user: {smtp_username}")
                 server.login(smtp_username, smtp_password)
                 server.send_message(msg)
+            print("DEBUG - Email sent successfully")
             return True
         except Exception as e:
             print(f"Error sending email: {e}")
