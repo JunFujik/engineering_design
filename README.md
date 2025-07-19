@@ -32,7 +32,7 @@ Flask + Svelte + SQLite + SQLAlchemy を使用した勤怠管理システム
 ### 2. 環境変数の設定
 
 以下の`.env`ファイルをプロジェクトのルートディレクトリに作成
-SMTP_PASSWORDは半角スペースを消す
+**SMTP_PASSWORDは半角スペースを消す**
 SMTP_USERNAME,FROM_EMAILは同じメールアドレスを指定する
 
 ```
@@ -45,6 +45,9 @@ SMTP_PORT=587
 SMTP_USERNAME=your-email@gmail.com
 SMTP_PASSWORD=yourapppasswordwithoutspaces
 FROM_EMAIL=your-email@gmail.com
+
+# admin_password
+SECRET_KEY=tmcit2025-secret-key-change-in-production
 ```
 
 ### 4. Dockerコンテナの起動
