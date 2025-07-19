@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api'
+  baseURL: '/api',
+  withCredentials: true // セッション管理のためのクッキーを送信
 });
 
 export const userAPI = {
@@ -18,6 +19,12 @@ export const qrAPI = {
 export const attendanceAPI = {
   check: (data) => api.post('/attendance/check', data),
   getAll: (params) => api.get('/attendance', { params })
+};
+
+export const authAPI = {
+  login: (password) => api.post('/auth/login', { password }),
+  logout: () => api.post('/auth/logout'),
+  getStatus: () => api.get('/auth/status')
 };
 
 export default api;

@@ -5,7 +5,13 @@ import os
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
+
+# セッション管理の設定
+app.secret_key = os.getenv('SECRET_KEY', 'tmcit2025-secret-key-change-in-production')
+app.config['SESSION_COOKIE_SECURE'] = False  # HTTPSでない場合はFalse
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # Create database directory if it doesn't exist
 os.makedirs('/data', exist_ok=True)
@@ -22,6 +28,7 @@ from models import User, Attendance
 
 # Import routes after models
 from routes import register_routes
+from auth import register_auth_routes
 
 # Create tables and ensure database is initialized
 with app.app_context():
@@ -34,6 +41,7 @@ with app.app_context():
 
 # Register all routes
 register_routes(app)
+register_auth_routes(app)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
