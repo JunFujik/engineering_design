@@ -44,6 +44,7 @@ class MakeUpClass(db.Model):
     new_date = db.Column(db.String(50), nullable=False)
     new_period = db.Column(db.String(50), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='pending')  # ←★これを追加！
 
     def to_dict(self):
         return {
@@ -54,7 +55,8 @@ class MakeUpClass(db.Model):
             'original_period': self.original_period,
             'new_date': self.new_date,
             'new_period': self.new_period,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'status': self.status  # ←★これも忘れず追加！
         }
 
 # 新しいモデル: インポートしたExcelデータを保存

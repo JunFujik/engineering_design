@@ -5,7 +5,7 @@
   import QRGenerator from './QRGenerator.svelte';
   import QRScanner from './QRScanner.svelte';
   import AttendanceList from './AttendanceList.svelte';
-  import MakeUpClassRequest from './MakeUpClassRequest.svelte';
+  import MakeUpApproval from './MakeUpApproval.svelte';
   import ExcelImporter from './ExcelImporter.svelte';
   import AttendanceTableViewer from './AttendanceTableViewer.svelte';
 
@@ -44,8 +44,8 @@
     <button class="nav-btn" class:active={activeTab === 'attendance'} on:click={() => activeTab = 'attendance'}>
       勤怠記録
     </button>
-    <button class="nav-btn" class:active={activeTab === 'makeup'} on:click={() => activeTab = 'makeup'}>
-      補講申請
+    <button class="nav-btn" class:active={activeTab === 'makeup-approval'} on:click={() => activeTab = 'makeup-approval'}>
+      補講申請承認
     </button>
     <button class="nav-btn" class:active={activeTab === 'excel-import'} on:click={() => activeTab = 'excel-import'}>
       Excelインポート
@@ -69,8 +69,8 @@
       <QRScanner />
     {:else if activeTab === 'attendance'}
       <AttendanceList />
-    {:else if activeTab === 'makeup'}
-      <MakeUpClassRequest />
+    {:else if activeTab === 'makeup-approval'}
+      <MakeUpApproval />
     {:else if activeTab === 'excel-import'}
       <ExcelImporter />
     {:else if activeTab === 'attendance-tables'}

@@ -5,7 +5,9 @@ from datetime import datetime, date
 from database import db
 from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate, TeacherSalary
 from qr_service import QRService
+from models import db
 import base64
+
 
 def register_routes(app):
     @app.route('/api/users', methods=['GET', 'POST'])
@@ -42,6 +44,7 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching users: {e}")
             return jsonify({'error': 'Failed to fetch users'}), 500
+        
         
     # Excelからユーザ登録する機能
     @app.route('/api/users/import', methods=['POST'])
@@ -288,6 +291,26 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching makeup requests: {e}")
             return jsonify({'error': '補講申請の取得に失敗しました'}), 500
+        
+    # 補講申請のステータス更新（承認・却下）
+    @app.route('/api/makeup-requests/<int:id>', methods=['PATCH'])
+    def update_makeup_request_status(id):
+        try:
+            data = request.json
+            req = MakeUpClass.query.get(id)
+            if not req:
+                return jsonify({'error': '対象の申請が見つかりません'}), 404
+
+            if 'status' in data:
+                req.status = data['status']
+                db.session.commit()
+                return jsonify(req.to_dict()), 200
+            else:
+                return jsonify({'error': 'status フィールドが必要です'}), 400
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error updating makeup request status: {e}")
+            return jsonify({'error': 'ステータスの更新に失敗しました'}), 500
 
     # 新しいエンドポイント: インポートデータの保存
     @app.route('/api/import-excel', methods=['POST'])
@@ -470,3 +493,23 @@ def register_routes(app):
             return jsonify({'status': 'healthy', 'database': 'connected'})
         except Exception as e:
             return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+        
+    @app.route('/api/makeup-request/<int:id>', methods=['PATCH'])
+    def update_makeup_request(id):
+        try:
+            data = request.json
+            req = MakeUpClass.query.get(id)
+            if not req:
+                return jsonify({'error': '該当の申請が見つかりません'}), 404
+            
+            if 'status' in data:
+                req.status = data['status']
+                db.session.commit()
+                return jsonify(req.to_dict()), 200
+            else:
+                return jsonify({'error': '更新内容が不正です'}), 400
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"更新エラー: {e}")
+            return jsonify({'error': '更新に失敗しました'}), 500
