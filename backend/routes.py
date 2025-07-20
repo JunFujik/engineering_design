@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from datetime import datetime, date
 from database import db
-from models import User, Attendance
+from models import User, Attendance, MakeUpClass
 from qr_service import QRService
 import base64
 
@@ -211,3 +211,30 @@ def register_routes(app):
             return jsonify({'status': 'healthy', 'database': 'connected'})
         except Exception as e:
             return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+        
+
+    @app.route('/api/makeup-request', methods=['POST'])
+    def makeup_request():
+        try:
+            data = request.json
+            
+            # 必須項目のチェック
+            required_fields = ['name', 'subject', 'original_date', 'original_period', 'new_date', 'new_period']
+            if not all(field in data for field in required_fields):
+                return jsonify({'error': 'すべての項目が必要です'}), 400
+
+            new_request = MakeUpClass(
+                name=data['name'],
+                subject=data['subject'],
+                original_date=data['original_date'],
+                original_period=data['original_period'],
+                new_date=data['new_date'],
+                new_period=data['new_period']
+            )
+            db.session.add(new_request)
+            db.session.commit()
+            return jsonify(new_request.to_dict()), 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating makeup request: {e}")
+            return jsonify({'error': '補講申請の作成に失敗しました'}), 500
