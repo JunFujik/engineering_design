@@ -1,11 +1,15 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   import { authAPI } from '../lib/api.js';
+  import UserManagement from './UserManagement.svelte';
+  import QRGenerator from './QRGenerator.svelte';
+  import QRScanner from './QRScanner.svelte';
+  import AttendanceList from './AttendanceList.svelte';
+  import MakeUpClassRequest from './MakeUpClassRequest.svelte';
   import ExcelImporter from './ExcelImporter.svelte';
   import AttendanceTableViewer from './AttendanceTableViewer.svelte';
 
   const dispatch = createEventDispatcher();
-
   let activeTab = 'dashboard';
 
   async function handleLogout() {
@@ -23,53 +27,50 @@
     <h1>管理者画面</h1>
     <button class="logout-btn" on:click={handleLogout}>ログアウト</button>
   </header>
-  
+
   <nav class="admin-nav">
-    <button 
-      class="nav-btn" 
-      class:active={activeTab === 'dashboard'}
-      on:click={() => activeTab = 'dashboard'}
-    >
+    <button class="nav-btn" class:active={activeTab === 'dashboard'} on:click={() => activeTab = 'dashboard'}>
       ダッシュボード
     </button>
-    <button 
-      class="nav-btn" 
-      class:active={activeTab === 'excel-import'}
-      on:click={() => activeTab = 'excel-import'}
-    >
+    <button class="nav-btn" class:active={activeTab === 'user-management'} on:click={() => activeTab = 'user-management'}>
+      ユーザー管理
+    </button>
+    <button class="nav-btn" class:active={activeTab === 'qr-generate'} on:click={() => activeTab = 'qr-generate'}>
+      QRコード生成
+    </button>
+    <button class="nav-btn" class:active={activeTab === 'qr-scan'} on:click={() => activeTab = 'qr-scan'}>
+      QRコード読取
+    </button>
+    <button class="nav-btn" class:active={activeTab === 'attendance'} on:click={() => activeTab = 'attendance'}>
+      勤怠記録
+    </button>
+    <button class="nav-btn" class:active={activeTab === 'makeup'} on:click={() => activeTab = 'makeup'}>
+      補講申請
+    </button>
+    <button class="nav-btn" class:active={activeTab === 'excel-import'} on:click={() => activeTab = 'excel-import'}>
       Excelインポート
     </button>
-    <button 
-      class="nav-btn" 
-      class:active={activeTab === 'attendance-tables'}
-      on:click={() => activeTab = 'attendance-tables'}
-    >
+    <button class="nav-btn" class:active={activeTab === 'attendance-tables'} on:click={() => activeTab = 'attendance-tables'}>
       出勤簿表示
     </button>
   </nav>
-  
+
   <div class="admin-content">
     {#if activeTab === 'dashboard'}
       <div class="welcome-card">
         <h2>ようこそ、管理者様</h2>
-        <p>管理者専用の画面です。</p>
-        <div class="feature-list">
-          <div class="feature-item">
-            <h3>Excelインポート機能</h3>
-            <p>HTML形式で保存されたExcelファイルから勤怠データを読み込むことができます。</p>
-            <button on:click={() => activeTab = 'excel-import'}>
-              Excelインポートを開く
-            </button>
-          </div>
-          <div class="feature-item">
-            <h3>出勤簿表示機能</h3>
-            <p>インポートしたデータから先生管理表と日付管理表を作成・表示することができます。</p>
-            <button on:click={() => activeTab = 'attendance-tables'}>
-              出勤簿表示を開く
-            </button>
-          </div>
-        </div>
+        <p>管理者専用の機能を利用できます。</p>
       </div>
+    {:else if activeTab === 'user-management'}
+      <UserManagement />
+    {:else if activeTab === 'qr-generate'}
+      <QRGenerator />
+    {:else if activeTab === 'qr-scan'}
+      <QRScanner />
+    {:else if activeTab === 'attendance'}
+      <AttendanceList />
+    {:else if activeTab === 'makeup'}
+      <MakeUpClassRequest />
     {:else if activeTab === 'excel-import'}
       <ExcelImporter />
     {:else if activeTab === 'attendance-tables'}
@@ -83,7 +84,7 @@
     min-height: 100vh;
     background-color: #f8f9fa;
   }
-  
+
   .admin-header {
     background: white;
     padding: 1rem 2rem;
@@ -92,12 +93,7 @@
     justify-content: space-between;
     align-items: center;
   }
-  
-  .admin-header h1 {
-    margin: 0;
-    color: #333;
-  }
-  
+
   .logout-btn {
     background-color: #dc3545;
     color: white;
@@ -107,7 +103,7 @@
     cursor: pointer;
     font-size: 0.9em;
   }
-  
+
   .logout-btn:hover {
     background-color: #c82333;
   }
@@ -117,7 +113,7 @@
     padding: 0 2rem;
     border-bottom: 1px solid #dee2e6;
     display: flex;
-    gap: 0;
+    flex-wrap: wrap;
   }
 
   .nav-btn {
@@ -141,11 +137,11 @@
     border-bottom-color: #007bff;
     font-weight: 600;
   }
-  
+
   .admin-content {
     padding: 2rem;
   }
-  
+
   .welcome-card {
     background: white;
     padding: 3rem;
@@ -154,54 +150,5 @@
     text-align: center;
     max-width: 800px;
     margin: 0 auto;
-  }
-  
-  .welcome-card h2 {
-    color: #007bff;
-    margin-bottom: 1rem;
-  }
-  
-  .welcome-card p {
-    color: #666;
-    line-height: 1.6;
-    margin-bottom: 1rem;
-  }
-
-  .feature-list {
-    margin-top: 2rem;
-    text-align: left;
-    display: grid;
-    gap: 1rem;
-  }
-
-  .feature-item {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 6px;
-    margin-bottom: 1rem;
-  }
-
-  .feature-item h3 {
-    color: #495057;
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-  }
-
-  .feature-item p {
-    margin-bottom: 1rem;
-  }
-
-  .feature-item button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-  }
-
-  .feature-item button:hover {
-    background-color: #0056b3;
   }
 </style>

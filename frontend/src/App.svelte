@@ -1,9 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import UserManagement from './components/UserManagement.svelte';
-  import QRGenerator from './components/QRGenerator.svelte';
   import QRScanner from './components/QRScanner.svelte';
-  import AttendanceList from './components/AttendanceList.svelte';
   import MakeUpClassRequest from './components/MakeUpClassRequest.svelte';
   import Login from './components/Login.svelte';
   import StaffLogin from './components/StaffLogin.svelte';
@@ -11,7 +8,7 @@
   import Staff from './components/staff.svelte';
   import { authAPI } from './lib/api.js';
 
-  let activeTab = 'users';
+  let activeTab = 'qr-scan';
   let currentRoute = 'home';
   let isLoggedIn = false;
   let staffLoggedIn = false;
@@ -19,10 +16,7 @@
   let showStaffLogin = false;
 
   const tabs = [
-    { id: 'users', label: 'ユーザー管理' },
-    { id: 'qr-generate', label: 'QRコード生成' },
     { id: 'qr-scan', label: 'QRコード読取' },
-    { id: 'attendance', label: '勤怠記録' },
     { id: 'makeup', label: '補講申請' }
   ];
 
@@ -56,12 +50,12 @@
   }
 
   function handleStaffLoginSuccess() {
-  console.log('[✅ イベント受信] staff-login-success');
-  staffLoggedIn = true;
-  showStaffLogin = false;
-  currentRoute = 'staff';
-  window.history.pushState({}, '', '/staff');
-}
+    console.log('[✅ イベント受信] staff-login-success');
+    staffLoggedIn = true;
+    showStaffLogin = false;
+    currentRoute = 'staff';
+    window.history.pushState({}, '', '/staff');
+  }
 
   function handleLoginCancel() {
     showLogin = false;
@@ -117,14 +111,8 @@
     </div>
 
     <div class="tab-content">
-      {#if activeTab === 'users'}
-        <UserManagement />
-      {:else if activeTab === 'qr-generate'}
-        <QRGenerator />
-      {:else if activeTab === 'qr-scan'}
+      {#if activeTab === 'qr-scan'}
         <QRScanner />
-      {:else if activeTab === 'attendance'}
-        <AttendanceList />
       {:else if activeTab === 'makeup'}
         <MakeUpClassRequest />
       {/if}
@@ -135,12 +123,8 @@
     {/if}
 
     {#if showStaffLogin}
-  <!-- ✅ イベント名間違いないか、ここがマウントされているか -->
-  <StaffLogin
-    on:staff-login-success={handleStaffLoginSuccess}
-    on:cancel={handleLoginCancel}
-  />
-{/if}
+      <StaffLogin on:staff-login-success={handleStaffLoginSuccess} on:cancel={handleLoginCancel} />
+    {/if}
   </main>
 {/if}
 
