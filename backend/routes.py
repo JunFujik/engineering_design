@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from datetime import datetime, date
 from database import db
-from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate
+from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate, TeacherSalary
 from qr_service import QRService
 import base64
 
@@ -372,6 +372,65 @@ def register_routes(app):
             db.session.rollback()
             print(f"Error deleting imported data: {e}")
             return jsonify({'error': 'データの削除に失敗しました'}), 500
+
+    # 先生給料設定関連のエンドポイント
+    @app.route('/api/teacher-salaries', methods=['GET'])
+    def get_teacher_salaries():
+        try:
+            salaries = TeacherSalary.query.all()
+            return jsonify([salary.to_dict() for salary in salaries])
+        except Exception as e:
+            print(f"Error fetching teacher salaries: {e}")
+            return jsonify({'error': '給料設定の取得に失敗しました'}), 500
+
+    @app.route('/api/teacher-salaries', methods=['POST'])
+    def create_or_update_teacher_salary():
+        try:
+            data = request.json
+            teacher_name = data.get('teacher_name')
+            salary_per_class = data.get('salary_per_class', 0)
+            transportation_fee = data.get('transportation_fee', 0)
+            
+            if not teacher_name:
+                return jsonify({'error': '先生名は必須です'}), 400
+            
+            # 既存の設定があるかチェック
+            existing_salary = TeacherSalary.query.filter_by(teacher_name=teacher_name).first()
+            
+            if existing_salary:
+                # 更新
+                existing_salary.salary_per_class = salary_per_class
+                existing_salary.transportation_fee = transportation_fee
+                existing_salary.updated_at = datetime.utcnow()
+                salary_record = existing_salary
+            else:
+                # 新規作成
+                salary_record = TeacherSalary(
+                    teacher_name=teacher_name,
+                    salary_per_class=salary_per_class,
+                    transportation_fee=transportation_fee
+                )
+                db.session.add(salary_record)
+            
+            db.session.commit()
+            return jsonify(salary_record.to_dict()), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating/updating teacher salary: {e}")
+            return jsonify({'error': '給料設定の保存に失敗しました'}), 500
+
+    @app.route('/api/teacher-salaries/<int:salary_id>', methods=['DELETE'])
+    def delete_teacher_salary(salary_id):
+        try:
+            salary = TeacherSalary.query.get_or_404(salary_id)
+            db.session.delete(salary)
+            db.session.commit()
+            return '', 204
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting teacher salary: {e}")
+            return jsonify({'error': '給料設定の削除に失敗しました'}), 500
 
     @app.route('/api/health', methods=['GET'])
     def health():

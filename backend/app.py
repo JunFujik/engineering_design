@@ -26,7 +26,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 # Import models after db initialization (全てのモデルをインポート)
-from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate
+from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate, TeacherSalary
 
 # スケジューラの初期化とジョブの登録
 def send_daily_qr_emails_job():

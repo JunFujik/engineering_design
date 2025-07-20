@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import { authAPI } from '../lib/api.js';
   import ExcelImporter from './ExcelImporter.svelte';
+  import AttendanceTableViewer from './AttendanceTableViewer.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -38,6 +39,13 @@
     >
       Excelインポート
     </button>
+    <button 
+      class="nav-btn" 
+      class:active={activeTab === 'attendance-tables'}
+      on:click={() => activeTab = 'attendance-tables'}
+    >
+      出勤簿表示
+    </button>
   </nav>
   
   <div class="admin-content">
@@ -53,10 +61,19 @@
               Excelインポートを開く
             </button>
           </div>
+          <div class="feature-item">
+            <h3>出勤簿表示機能</h3>
+            <p>インポートしたデータから先生管理表と日付管理表を作成・表示することができます。</p>
+            <button on:click={() => activeTab = 'attendance-tables'}>
+              出勤簿表示を開く
+            </button>
+          </div>
         </div>
       </div>
     {:else if activeTab === 'excel-import'}
       <ExcelImporter />
+    {:else if activeTab === 'attendance-tables'}
+      <AttendanceTableViewer />
     {/if}
   </div>
 </div>
@@ -153,6 +170,8 @@
   .feature-list {
     margin-top: 2rem;
     text-align: left;
+    display: grid;
+    gap: 1rem;
   }
 
   .feature-item {

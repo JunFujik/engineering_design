@@ -29,7 +29,7 @@ export const authAPI = {
   getStatus: () => api.get('/auth/status')
 };
 
-// 新しいAPI: インポートデータ関連
+// インポートデータ関連API
 export const importAPI = {
   saveData: (data) => api.post('/import-excel', data),
   getAll: () => api.get('/imported-data'),
@@ -41,6 +41,13 @@ export const importAPI = {
 export const makeupAPI = {
   create: (data) => api.post('/makeup-request', data),
   getAll: () => api.get('/makeup-requests')
+};
+
+// 先生給料設定API
+export const teacherSalaryAPI = {
+  getAll: () => api.get('/teacher-salaries'),
+  createOrUpdate: (data) => api.post('/teacher-salaries', data),
+  delete: (id) => api.delete(`/teacher-salaries/${id}`)
 };
 
 export default api;

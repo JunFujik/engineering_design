@@ -135,3 +135,22 @@ class AttendanceDate(db.Model):
             'hours': self.hours,
             'notes': self.notes
         }
+
+# 先生給料設定モデル
+class TeacherSalary(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    teacher_name = db.Column(db.String(100), nullable=False, unique=True)
+    salary_per_class = db.Column(db.Integer, default=0)  # 1コマあたりの給料
+    transportation_fee = db.Column(db.Integer, default=0)  # 交通費
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'teacher_name': self.teacher_name,
+            'salary_per_class': self.salary_per_class,
+            'transportation_fee': self.transportation_fee,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
