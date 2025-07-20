@@ -187,7 +187,7 @@ def register_routes(app):
             current_time = datetime.now()
             
             if not attendance:
-                # Create new attendance record (check-in)
+                # Create new attendance record - 出勤記録
                 attendance = Attendance(
                     user_id=user.id,
                     date=target_date_obj,
@@ -196,20 +196,13 @@ def register_routes(app):
                 db.session.add(attendance)
                 db.session.commit()
                 return jsonify({
-                    'message': 'Checked in successfully',
-                    'attendance': attendance.to_dict()
-                })
-            elif not attendance.check_out:
-                # Update existing record (check-out)
-                attendance.check_out = current_time
-                db.session.commit()
-                return jsonify({
-                    'message': 'Checked out successfully',
+                    'message': f'{user.name}さんが{target_date}に出勤しました',
                     'attendance': attendance.to_dict()
                 })
             else:
+                # 既に出勤記録が存在する場合
                 return jsonify({
-                    'error': 'Attendance already completed for this date',
+                    'error': f'{target_date}の出勤は既に記録済みです',
                     'attendance': attendance.to_dict()
                 }), 400
         except Exception as e:
