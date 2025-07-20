@@ -6,13 +6,17 @@
   import AttendanceList from './components/AttendanceList.svelte';
   import MakeUpClassRequest from './components/MakeUpClassRequest.svelte';
   import Login from './components/Login.svelte';
+  import StaffLogin from './components/StaffLogin.svelte';
   import Admin from './components/Admin.svelte';
+  import Staff from './components/staff.svelte';
   import { authAPI } from './lib/api.js';
 
   let activeTab = 'users';
   let currentRoute = 'home';
   let isLoggedIn = false;
+  let staffLoggedIn = false;
   let showLogin = false;
+  let showStaffLogin = false;
 
   const tabs = [
     { id: 'users', label: 'ユーザー管理' },
@@ -24,10 +28,11 @@
 
   onMount(() => {
     checkAuthStatus();
-    // 簡単なルーティング処理
     const path = window.location.pathname;
     if (path === '/admin') {
       currentRoute = 'admin';
+    } else if (path === '/staff') {
+      currentRoute = 'staff';
     }
   });
 
@@ -35,31 +40,37 @@
     try {
       const response = await authAPI.getStatus();
       isLoggedIn = response.data.logged_in;
+      staffLoggedIn = response.data.staff_logged_in;
     } catch (err) {
       console.error('Auth status check failed:', err);
       isLoggedIn = false;
+      staffLoggedIn = false;
     }
   }
 
   function handleLoginSuccess() {
     isLoggedIn = true;
     showLogin = false;
-    // 管理者ページに遷移
     currentRoute = 'admin';
     window.history.pushState({}, '', '/admin');
   }
 
+  function handleStaffLoginSuccess() {
+  console.log('[✅ イベント受信] staff-login-success');
+  staffLoggedIn = true;
+  showStaffLogin = false;
+  currentRoute = 'staff';
+  window.history.pushState({}, '', '/staff');
+}
+
   function handleLoginCancel() {
     showLogin = false;
+    showStaffLogin = false;
   }
 
   function handleLogout() {
     isLoggedIn = false;
-    currentRoute = 'home';
-    window.history.pushState({}, '', '/');
-  }
-
-  function goHome() {
+    staffLoggedIn = false;
     currentRoute = 'home';
     window.history.pushState({}, '', '/');
   }
@@ -67,6 +78,8 @@
 
 {#if currentRoute === 'admin'}
   <Admin on:logout={handleLogout} />
+{:else if currentRoute === 'staff'}
+  <Staff on:logout={handleLogout} />
 {:else}
   <main>
     <header>
@@ -78,12 +91,19 @@
             管理者画面
           </button>
           <button class="logout-btn" on:click={handleLogout}>ログアウト</button>
+        {:else if staffLoggedIn}
+          <span class="admin-status">連絡員でログイン中</span>
+          <button class="admin-btn" on:click={() => { currentRoute = 'staff'; window.history.pushState({}, '', '/staff'); }}>
+            連絡員画面
+          </button>
+          <button class="logout-btn" on:click={handleLogout}>ログアウト</button>
         {:else}
           <button class="login-btn" on:click={() => showLogin = true}>管理者ログイン</button>
+          <button class="login-btn" on:click={() => showStaffLogin = true}>連絡員ログイン</button>
         {/if}
       </div>
     </header>
-    
+
     <div class="tab-buttons">
       {#each tabs as tab}
         <button 
@@ -113,6 +133,14 @@
     {#if showLogin}
       <Login on:login-success={handleLoginSuccess} on:cancel={handleLoginCancel} />
     {/if}
+
+    {#if showStaffLogin}
+  <!-- ✅ イベント名間違いないか、ここがマウントされているか -->
+  <StaffLogin
+    on:staff-login-success={handleStaffLoginSuccess}
+    on:cancel={handleLoginCancel}
+  />
+{/if}
   </main>
 {/if}
 

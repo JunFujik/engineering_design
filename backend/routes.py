@@ -1,4 +1,6 @@
 from flask import request, jsonify
+import os
+from flask import session
 from datetime import datetime, date
 from database import db
 from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate, TeacherSalary

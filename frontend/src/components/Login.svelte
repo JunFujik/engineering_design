@@ -18,7 +18,7 @@
     loading = true;
 
     try {
-      await authAPI.login(password);
+      await authAPI.login(password); 
       dispatch('login-success');
       password = '';
     } catch (err) {
@@ -80,7 +80,7 @@
     align-items: center;
     z-index: 1000;
   }
-  
+
   .login-content {
     background: white;
     padding: 2rem;
@@ -89,17 +89,17 @@
     min-width: 300px;
     max-width: 400px;
   }
-  
+
   .button-group {
     display: flex;
     gap: 1rem;
     justify-content: flex-end;
   }
-  
+
   .button-group button {
     padding: 0.5rem 1rem;
   }
-  
+
   h3 {
     margin-top: 0;
     text-align: center;

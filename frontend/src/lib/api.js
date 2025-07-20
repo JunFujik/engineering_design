@@ -27,7 +27,8 @@ export const attendanceAPI = {
 export const authAPI = {
   login: (password) => api.post('/auth/login', { password }),
   logout: () => api.post('/auth/logout'),
-  getStatus: () => api.get('/auth/status')
+  getStatus: () => api.get('/auth/status'),
+  staffLogin: (password) => api.post('/auth/staff-login', { password }),
 };
 
 // インポートデータ関連API
