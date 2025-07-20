@@ -1,12 +1,14 @@
 <script>
   import { onMount } from 'svelte';
   import { userAPI } from '../lib/api.js';
+  import { loadSheetJS } from '../lib/utils.js';
 
   let users = [];
   let newUser = { name: '', email: '' };
   let error = '';
   let success = '';
   let loading = false;
+  let fileInput;
 
   onMount(() => {
     loadUsers();
@@ -20,6 +22,43 @@
     } catch (err) {
       console.error('Load users error:', err);
       error = 'ユーザーの読み込みに失敗しました';
+    }
+  }
+
+  async function handleFileImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    loading = true;
+    error = '';
+    success = '';
+
+    try {
+      await loadSheetJS();
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(worksheet, { header: ['name', 'email'] });
+
+      // Remove header row if it exists
+      if (json[0] && json[0].name === 'name' && json[0].email === 'email') {
+        json.shift();
+      }
+
+      const response = await userAPI.importUsers({ users: json });
+
+      success = response.data.message;
+      if (response.data.errors && response.data.errors.length > 0) {
+        error = response.data.errors.join('\n');
+      }
+
+      await loadUsers();
+    } catch (err) {
+      console.error('Import error:', err);
+      error = err.response?.data?.error || 'ファイルのインポートに失敗しました。';
+    } finally {
+      loading = false;
+      if (fileInput) fileInput.value = '';
     }
   }
 
@@ -136,6 +175,24 @@
     </button>
   </form>
 </div>
+
+
+<div class="card">
+  <h2>Excelから一括登録</h2>
+  <div class="form-group">
+    <label for="import-file">Excelファイルを選択</label>
+    <input
+      type="file"
+      id="import-file"
+      bind:this={fileInput}
+      on:change={handleFileImport}
+      accept=".xlsx, .xls"
+      disabled={loading} />
+    <small>Excelの1列目に名前、2列目にメールアドレスを記載してください。(1行目はヘッダーとして無視されます)</small>
+  </div>
+</div>
+
+
 
 <div class="card">
   <h2>登録ユーザー一覧</h2>
