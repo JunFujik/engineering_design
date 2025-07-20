@@ -4,6 +4,7 @@
   import QRGenerator from './components/QRGenerator.svelte';
   import QRScanner from './components/QRScanner.svelte';
   import AttendanceList from './components/AttendanceList.svelte';
+  import MakeUpClassRequest from './components/MakeUpClassRequest.svelte';
   import Login from './components/Login.svelte';
   import Admin from './components/Admin.svelte';
   import { authAPI } from './lib/api.js';
@@ -17,7 +18,8 @@
     { id: 'users', label: 'ユーザー管理' },
     { id: 'qr-generate', label: 'QRコード生成' },
     { id: 'qr-scan', label: 'QRコード読取' },
-    { id: 'attendance', label: '勤怠記録' }
+    { id: 'attendance', label: '勤怠記録' },
+    { id: 'makeup', label: '補講申請' }
   ];
 
   onMount(() => {
@@ -103,6 +105,8 @@
         <QRScanner />
       {:else if activeTab === 'attendance'}
         <AttendanceList />
+      {:else if activeTab === 'makeup'}
+        <MakeUpClassRequest />
       {/if}
     </div>
 

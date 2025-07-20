@@ -18,7 +18,8 @@ export const qrAPI = {
 
 export const attendanceAPI = {
   check: (data) => api.post('/attendance/check', data),
-  getAll: (params) => api.get('/attendance', { params })
+  getAll: (params) => api.get('/attendance', { params }),
+  requestMakeUpClass: (data) => api.post('/makeup-request', data) // 追加
 };
 
 export const authAPI = {

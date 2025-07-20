@@ -73,6 +73,17 @@ class BasicInfo(db.Model):
     row3_b = db.Column(db.String(100))
     row3_c = db.Column(db.String(100))
     row3_d = db.Column(db.String(100))
+    
+# 補講関連
+class MakeUpClass(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    subject = db.Column(db.String(100), nullable=False)
+    original_date = db.Column(db.String(50), nullable=False)
+    original_period = db.Column(db.String(50), nullable=False)
+    new_date = db.Column(db.String(50), nullable=False)
+    new_period = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         return {
@@ -110,5 +121,10 @@ class AttendanceDate(db.Model):
             'check_in_time': self.check_in_time,
             'check_out_time': self.check_out_time,
             'hours': self.hours,
-            'notes': self.notes
+            'notes': self.notes,
+            'subject': self.subject,
+            'original_date': self.original_date,
+            'new_date': self.new_date,
+            'new_period': self.new_period,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
