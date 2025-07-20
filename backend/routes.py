@@ -203,6 +203,51 @@ def register_routes(app):
             print(f"Error fetching attendance: {e}")
             return jsonify({'error': 'Failed to fetch attendance records'}), 500
 
+    # 補講申請エンドポイント（修正版）
+    @app.route('/api/makeup-request', methods=['POST'])
+    def makeup_request():
+        try:
+            data = request.json
+            print(f"Received makeup request data: {data}")  # デバッグ用
+            
+            # 必須項目のチェック
+            required_fields = ['name', 'subject', 'original_date', 'original_period', 'new_date', 'new_period']
+            missing_fields = [field for field in required_fields if not data.get(field)]
+            
+            if missing_fields:
+                return jsonify({'error': f'以下の項目が必要です: {", ".join(missing_fields)}'}), 400
+
+            # 新しい補講申請を作成
+            new_request = MakeUpClass(
+                name=data['name'],
+                subject=data['subject'],
+                original_date=data['original_date'],
+                original_period=data['original_period'],
+                new_date=data['new_date'],
+                new_period=data['new_period']
+            )
+            
+            db.session.add(new_request)
+            db.session.commit()
+            
+            print(f"Makeup request created successfully: {new_request.to_dict()}")  # デバッグ用
+            return jsonify(new_request.to_dict()), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error creating makeup request: {e}")
+            return jsonify({'error': f'補講申請の作成に失敗しました: {str(e)}'}), 500
+
+    # 補講申請一覧取得
+    @app.route('/api/makeup-requests', methods=['GET'])
+    def get_makeup_requests():
+        try:
+            requests = MakeUpClass.query.order_by(MakeUpClass.created_at.desc()).all()
+            return jsonify([req.to_dict() for req in requests])
+        except Exception as e:
+            print(f"Error fetching makeup requests: {e}")
+            return jsonify({'error': '補講申請の取得に失敗しました'}), 500
+
     # 新しいエンドポイント: インポートデータの保存
     @app.route('/api/import-excel', methods=['POST'])
     def import_excel():
@@ -325,30 +370,3 @@ def register_routes(app):
             return jsonify({'status': 'healthy', 'database': 'connected'})
         except Exception as e:
             return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
-        
-
-    @app.route('/api/makeup-request', methods=['POST'])
-    def makeup_request():
-        try:
-            data = request.json
-            
-            # 必須項目のチェック
-            required_fields = ['name', 'subject', 'original_date', 'original_period', 'new_date', 'new_period']
-            if not all(field in data for field in required_fields):
-                return jsonify({'error': 'すべての項目が必要です'}), 400
-
-            new_request = MakeUpClass(
-                name=data['name'],
-                subject=data['subject'],
-                original_date=data['original_date'],
-                original_period=data['original_period'],
-                new_date=data['new_date'],
-                new_period=data['new_period']
-            )
-            db.session.add(new_request)
-            db.session.commit()
-            return jsonify(new_request.to_dict()), 201
-        except Exception as e:
-            db.session.rollback()
-            print(f"Error creating makeup request: {e}")
-            return jsonify({'error': '補講申請の作成に失敗しました'}), 500

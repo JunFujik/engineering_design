@@ -19,7 +19,7 @@ export const qrAPI = {
 export const attendanceAPI = {
   check: (data) => api.post('/attendance/check', data),
   getAll: (params) => api.get('/attendance', { params }),
-  requestMakeUpClass: (data) => api.post('/makeup-request', data) // 追加
+  requestMakeUpClass: (data) => api.post('/makeup-request', data) // 補講申請
 };
 
 export const authAPI = {
@@ -34,6 +34,12 @@ export const importAPI = {
   getAll: () => api.get('/imported-data'),
   getDetail: (id) => api.get(`/imported-data/${id}`),
   delete: (id) => api.delete(`/imported-data/${id}`)
+};
+
+// 補講申請API
+export const makeupAPI = {
+  create: (data) => api.post('/makeup-request', data),
+  getAll: () => api.get('/makeup-requests')
 };
 
 export default api;

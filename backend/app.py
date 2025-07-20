@@ -23,8 +23,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database with app
 db.init_app(app)
 
-# Import models after db initialization
-from models import User, Attendance
+# Import models after db initialization (全てのモデルをインポート)
+from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate
 
 # Import routes after models
 from routes import register_routes
