@@ -40,6 +40,41 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching users: {e}")
             return jsonify({'error': 'Failed to fetch users'}), 500
+        
+    # Excelからユーザ登録する機能
+    @app.route('/api/users/import', methods=['POST'])
+    def import_users():
+        try:
+            data = request.json
+            users_to_import = data.get('users', [])
+            if not users_to_import:
+                return jsonify({'error': 'No users to import'}), 400
+
+            imported_count = 0
+            errors = []
+
+            for user_data in users_to_import:
+                name = user_data.get('name')
+                email = user_data.get('email')
+
+                if not name or not email:
+                    errors.append(f"Skipping invalid data: {user_data}")
+                    continue
+
+                existing_user = User.query.filter((User.name == name) | (User.email == email)).first()
+                if existing_user:
+                    errors.append(f"User '{name}' or email '{email}' already exists.")
+                    continue
+
+                user = User(name=name, email=email)
+                db.session.add(user)
+                imported_count += 1
+            db.session.commit()
+            return jsonify({'message': f'{imported_count} users imported successfully.', 'errors': errors}), 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error importing users: {e}")
+            return jsonify({'error': 'Failed to import users'}), 500
 
     @app.route('/api/users/<int:user_id>', methods=['GET', 'DELETE'])
     def user(user_id):

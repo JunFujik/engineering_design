@@ -8,7 +8,8 @@ const api = axios.create({
 export const userAPI = {
   getAll: () => api.get('/users'),
   create: (data) => api.post('/users', data),
-  delete: (id) => api.delete(`/users/${id}`)
+  delete: (id) => api.delete(`/users/${id}`),
+  importUsers: (data) => api.post('/users/import', data)
 };
 
 export const qrAPI = {
