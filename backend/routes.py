@@ -105,6 +105,17 @@ def register_routes(app):
         except Exception as e:
             print(f"Error sending QR email: {e}")
             return jsonify({'error': f'Failed to send email: {str(e)}'}), 500
+    
+    @app.route('/api/send-qr-email-all', methods=['POST'])
+    def send_qr_email_all():
+        try:
+            success = QRService.send_qr_email_to_all_users()
+            if success:
+                return jsonify({'message': 'All QR code emails sent successfully.'})
+            else:
+                return jsonify({'error': 'Failed to send some or all emails. Check logs for details.'}), 500
+        except Exception as e:
+            return jsonify({'error': f'An error occurred: {str(e)}'}), 500
 
     @app.route('/api/attendance/check', methods=['POST'])
     def check_attendance():

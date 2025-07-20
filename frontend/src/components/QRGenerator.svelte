@@ -49,6 +49,23 @@
     }
   }
 
+  async function sendEmailToAll() {
+    if (!confirm('登録されている全ユーザーに本日の日付でQRコードを送信します。よろしいですか？')) {
+      return;
+    }
+    error = '';
+    success = '';
+    loading = true;
+    try {
+      await qrAPI.sendEmailToAll();
+      success = '全ユーザーにQRコードをメールで送信しました';
+    } catch (err) {
+      error = err.response?.data?.error || 'メールの一斉送信に失敗しました';
+    } finally {
+      loading = false;
+    }
+  }
+
   async function sendEmail() {
     error = '';
     success = '';
@@ -110,6 +127,9 @@
     <button on:click={sendEmail} disabled={loading}>
       {loading ? '送信中...' : 'メールで送信'}
     </button>
+    <button on:click={sendEmailToAll} disabled={loading} class="send-all-btn">
+      {loading ? '一斉送信中...' : '全員にメールで送信'}
+    </button>
   </div>
   
   {#if qrCode}
@@ -124,5 +144,13 @@
 <style>
   .qr-code {
     margin-top: 2rem;
+  }
+
+  .send-all-btn {
+    background-color: #28a745;
+  }
+
+  .send-all-btn:hover {
+    background-color: #218838;
   }
 </style>

@@ -13,7 +13,8 @@ export const userAPI = {
 
 export const qrAPI = {
   generate: (data) => api.post('/generate-qr', data),
-  sendEmail: (data) => api.post('/send-qr-email', data)
+  sendEmail: (data) => api.post('/send-qr-email', data),
+  sendEmailToAll: () => api.post('/send-qr-email-all') // 追加
 };
 
 export const attendanceAPI = {

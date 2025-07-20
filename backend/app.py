@@ -1,7 +1,9 @@
 from flask import Flask
 from flask_cors import CORS
 from database import db
+from qr_service import QRService
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -25,6 +27,16 @@ db.init_app(app)
 
 # Import models after db initialization (全てのモデルをインポート)
 from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate
+
+# スケジューラの初期化とジョブの登録
+def send_daily_qr_emails_job():
+    with app.app_context():
+        print("Executing scheduled job: send_daily_qr_emails_job")
+        QRService.send_qr_email_to_all_users()
+
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.add_job(send_daily_qr_emails_job, 'cron', hour=6, minute=0)
+scheduler.start()
 
 # Import routes after models
 from routes import register_routes

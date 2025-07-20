@@ -7,6 +7,7 @@ from email.mime.image import MIMEImage
 import smtplib
 import os
 from datetime import datetime
+from models import User
 
 class QRService:
     @staticmethod
@@ -98,3 +99,27 @@ class QRService:
         except Exception as e:
             print(f"Error sending email: {e}")
             return False
+        
+    @staticmethod
+    def send_qr_email_to_all_users():
+        """Send QR code emails to all registered users"""
+        today = date.today().isoformat()
+        users = User.query.all()
+        
+        if not users:
+            print("No users found to send emails to.")
+            return False
+
+        successful_sends = 0
+        for user in users:
+            try:
+                qr_image_io, _ = QRService.generate_qr_code(user.name, today)
+                success = QRService.send_qr_email(user.email, user.name, qr_image_io, today)
+                if success:
+                    print(f"Successfully sent QR code email to {user.name} ({user.email})")
+                    successful_sends += 1
+            except Exception as e:
+                print(f"Failed to send email to {user.name} ({user.email}): {e}")
+        
+        print(f"Finished sending emails. {successful_sends}/{len(users)} sent successfully.")
+        return successful_sends == len(users)
