@@ -27,4 +27,12 @@ export const authAPI = {
   getStatus: () => api.get('/auth/status')
 };
 
+// 新しいAPI: インポートデータ関連
+export const importAPI = {
+  saveData: (data) => api.post('/import-excel', data),
+  getAll: () => api.get('/imported-data'),
+  getDetail: (id) => api.get(`/imported-data/${id}`),
+  delete: (id) => api.delete(`/imported-data/${id}`)
+};
+
 export default api;

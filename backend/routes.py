@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from datetime import datetime, date
 from database import db
-from models import User, Attendance
+from models import User, Attendance, ImportedData, BasicInfo, AttendanceDate
 from qr_service import QRService
 import base64
 
@@ -202,6 +202,120 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching attendance: {e}")
             return jsonify({'error': 'Failed to fetch attendance records'}), 500
+
+    # 新しいエンドポイント: インポートデータの保存
+    @app.route('/api/import-excel', methods=['POST'])
+    def import_excel():
+        try:
+            data = request.json
+            filename = data.get('filename', 'unknown')
+            basic_info = data.get('basic_info', [])
+            attendance_dates = data.get('attendance_dates', [])
+            
+            # ImportedDataを作成
+            imported_data = ImportedData(filename=filename)
+            db.session.add(imported_data)
+            db.session.flush()  # IDを取得するためにflush
+            
+            # BasicInfoを作成
+            if basic_info:
+                basic = BasicInfo(imported_data_id=imported_data.id)
+                
+                # 基本情報を解析して保存
+                if len(basic_info) >= 1:
+                    basic.row1_a = basic_info[0][0] if len(basic_info[0]) > 0 else ''
+                    basic.row1_b = basic_info[0][1] if len(basic_info[0]) > 1 else ''
+                    basic.row1_c = basic_info[0][2] if len(basic_info[0]) > 2 else ''
+                    basic.row1_d = basic_info[0][3] if len(basic_info[0]) > 3 else ''
+                    
+                    # 氏名などの特定フィールドを抽出
+                    if basic_info[0][0] == '氏名' and len(basic_info[0]) > 1:
+                        basic.name = basic_info[0][1]
+                    if basic_info[0][0] == '所属' and len(basic_info[0]) > 1:
+                        basic.department = basic_info[0][1]
+                
+                if len(basic_info) >= 2:
+                    basic.row2_a = basic_info[1][0] if len(basic_info[1]) > 0 else ''
+                    basic.row2_b = basic_info[1][1] if len(basic_info[1]) > 1 else ''
+                    basic.row2_c = basic_info[1][2] if len(basic_info[1]) > 2 else ''
+                    basic.row2_d = basic_info[1][3] if len(basic_info[1]) > 3 else ''
+                    
+                    if basic_info[1][0] == '所属' and len(basic_info[1]) > 1:
+                        basic.department = basic_info[1][1]
+                    if basic_info[1][2] == '開講期間・クラス' and len(basic_info[1]) > 3:
+                        basic.period_class = basic_info[1][3]
+                
+                if len(basic_info) >= 3:
+                    basic.row3_a = basic_info[2][0] if len(basic_info[2]) > 0 else ''
+                    basic.row3_b = basic_info[2][1] if len(basic_info[2]) > 1 else ''
+                    basic.row3_c = basic_info[2][2] if len(basic_info[2]) > 2 else ''
+                    basic.row3_d = basic_info[2][3] if len(basic_info[2]) > 3 else ''
+                    
+                    if basic_info[2][0] == '授業科目' and len(basic_info[2]) > 1:
+                        basic.subject = basic_info[2][1]
+                    if basic_info[2][2] == '授業時間' and len(basic_info[2]) > 3:
+                        basic.time_slot = basic_info[2][3]
+                
+                db.session.add(basic)
+            
+            # AttendanceDateを作成
+            for item in attendance_dates:
+                attendance_date = AttendanceDate(
+                    imported_data_id=imported_data.id,
+                    row_number=item.get('row'),
+                    date_text=item.get('date'),
+                    attendance_mark=item.get('attendance', ''),
+                    check_in_time=item.get('checkIn', ''),
+                    check_out_time=item.get('checkOut', ''),
+                    hours=item.get('hours', ''),
+                    notes=item.get('notes', '')
+                )
+                db.session.add(attendance_date)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'データが正常に保存されました',
+                'id': imported_data.id
+            }), 201
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error importing excel data: {e}")
+            return jsonify({'error': 'データの保存に失敗しました'}), 500
+
+    # インポートデータの一覧取得
+    @app.route('/api/imported-data', methods=['GET'])
+    def get_imported_data():
+        try:
+            imported_data_list = ImportedData.query.order_by(ImportedData.import_date.desc()).all()
+            return jsonify([data.to_dict() for data in imported_data_list])
+        except Exception as e:
+            print(f"Error fetching imported data: {e}")
+            return jsonify({'error': 'インポートデータの取得に失敗しました'}), 500
+
+    # 特定のインポートデータの詳細取得
+    @app.route('/api/imported-data/<int:data_id>', methods=['GET'])
+    def get_imported_data_detail(data_id):
+        try:
+            imported_data = ImportedData.query.get_or_404(data_id)
+            return jsonify(imported_data.to_dict())
+        except Exception as e:
+            print(f"Error fetching imported data detail: {e}")
+            return jsonify({'error': 'データの取得に失敗しました'}), 500
+
+    # インポートデータの削除
+    @app.route('/api/imported-data/<int:data_id>', methods=['DELETE'])
+    def delete_imported_data(data_id):
+        try:
+            imported_data = ImportedData.query.get_or_404(data_id)
+            db.session.delete(imported_data)
+            db.session.commit()
+            return '', 204
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting imported data: {e}")
+            return jsonify({'error': 'データの削除に失敗しました'}), 500
 
     @app.route('/api/health', methods=['GET'])
     def health():
