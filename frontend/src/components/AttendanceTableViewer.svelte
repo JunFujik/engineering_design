@@ -13,12 +13,17 @@
   let success = '';
   let activeTableType = 'teacher'; // 'teacher' or 'date'
   let showSalarySettings = false;
+  let showSalaryCalculation = false;
   
   // 表示用データ
   let teacherTable = []; // 先生管理表
   let dateTable = [];    // 日付管理表
   let availableTeachers = []; // 利用可能な先生一覧
   let availableDates = [];    // 利用可能な日付一覧
+
+  // 給料計算用
+  let salaryCalculations = [];
+  let selectedSalaryPeriod = getCurrentPeriod();
 
   // 給料設定用
   let salaryForm = {
@@ -334,12 +339,14 @@
     }
   }
 
-  function resetSalaryForm() {
-    salaryForm = {
-      teacher_name: '',
-      salary_per_class: 0,
-      transportation_fee: 0
-    };
+  // 初期データ読み込み完了後にテーブルを生成
+  $: if (!loading && availableTeachers.length > 0 && availableDates.length > 0) {
+    generateTables();
+  }
+
+  // 給料計算の実行（データが変更されたときに自動実行）
+  $: if (!loading && availableTeachers.length > 0 && teacherSalaries.length >= 0) {
+    calculateSalaries();
   }
 
   function loadExistingSalary(teacherName) {
@@ -359,9 +366,151 @@
     }
   }
 
-  // 初期データ読み込み完了後にテーブルを生成
-  $: if (!loading && availableTeachers.length > 0 && availableDates.length > 0) {
-    generateTables();
+  // 現在の給料計算期間を取得（毎月15日締め）
+  function getCurrentPeriod() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    
+    if (day <= 15) {
+      // 15日以前なら前月16日～今月15日
+      const prevMonth = month === 1 ? 12 : month - 1;
+      const prevYear = month === 1 ? year - 1 : year;
+      return {
+        start: `${prevYear}-${String(prevMonth).padStart(2, '0')}-16`,
+        end: `${year}-${String(month).padStart(2, '0')}-15`,
+        label: `${prevYear}年${prevMonth}月16日～${year}年${month}月15日`
+      };
+    } else {
+      // 16日以降なら今月16日～来月15日
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      return {
+        start: `${year}-${String(month).padStart(2, '0')}-16`,
+        end: `${nextYear}-${String(nextMonth).padStart(2, '0')}-15`,
+        label: `${year}年${month}月16日～${nextYear}年${nextMonth}月15日`
+      };
+    }
+  }
+
+  // 給料計算期間のリストを生成
+  function generateSalaryPeriods() {
+    const periods = [];
+    const now = new Date();
+    
+    // 過去6ヶ月分の期間を生成
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      
+      const nextMonth = month === 12 ? 1 : month + 1;
+      const nextYear = month === 12 ? year + 1 : year;
+      
+      periods.push({
+        start: `${year}-${String(month).padStart(2, '0')}-16`,
+        end: `${nextYear}-${String(nextMonth).padStart(2, '0')}-15`,
+        label: `${year}年${month}月16日～${nextYear}年${nextMonth}月15日`
+      });
+    }
+    
+    return periods;
+  }
+
+  // 給料計算を実行
+  function calculateSalaries() {
+    if (!selectedSalaryPeriod) return;
+    
+    const calculations = [];
+    const startDate = selectedSalaryPeriod.start;
+    const endDate = selectedSalaryPeriod.end;
+    
+    availableTeachers.forEach(teacherName => {
+      const teacherSalary = teacherSalaries.find(s => s.teacher_name === teacherName);
+      const salaryPerClass = teacherSalary?.salary_per_class || 0;
+      const transportationFee = teacherSalary?.transportation_fee || 0;
+      
+      let workDays = 0;
+      let totalClasses = 0;
+      const workDetails = [];
+      
+      // インポートデータから出勤日数と授業数を計算
+      importedDataList.forEach(data => {
+        if (data.basic_info?.name === teacherName) {
+          const subjectName = data.basic_info?.subject || '授業科目未設定';
+          
+          data.attendance_dates?.forEach(item => {
+            const normalizedDate = normalizeDateFormat(item.date_text);
+            if (normalizedDate && 
+                normalizedDate >= startDate && 
+                normalizedDate <= endDate &&
+                item.attendance_mark && 
+                item.attendance_mark.trim() !== '' && 
+                item.attendance_mark !== '-') {
+              
+              const existingDay = workDetails.find(d => d.date === normalizedDate);
+              if (existingDay) {
+                existingDay.subjects.push(subjectName);
+                existingDay.classes++;
+              } else {
+                workDetails.push({
+                  date: normalizedDate,
+                  subjects: [subjectName],
+                  classes: 1
+                });
+              }
+              totalClasses++;
+            }
+          });
+        }
+      });
+      
+      // 勤怠記録からも計算
+      attendanceRecords.forEach(record => {
+        const user = users.find(u => u.id === record.user_id);
+        if (user && user.name === teacherName && 
+            record.date >= startDate && 
+            record.date <= endDate &&
+            (record.check_in || record.check_out)) {
+          
+          const existingDay = workDetails.find(d => d.date === record.date);
+          if (existingDay) {
+            if (!existingDay.subjects.includes('勤怠打刻')) {
+              existingDay.subjects.push('勤怠打刻');
+              existingDay.classes++;
+              totalClasses++;
+            }
+          } else {
+            workDetails.push({
+              date: record.date,
+              subjects: ['勤怠打刻'],
+              classes: 1
+            });
+            totalClasses++;
+          }
+        }
+      });
+      
+      workDays = workDetails.length;
+      const totalTransportationFee = workDays * transportationFee;
+      const totalClassFee = totalClasses * salaryPerClass;
+      const totalSalary = totalTransportationFee + totalClassFee;
+      
+      calculations.push({
+        teacherName,
+        workDays,
+        totalClasses,
+        salaryPerClass,
+        transportationFee,
+        totalTransportationFee,
+        totalClassFee,
+        totalSalary,
+        workDetails: workDetails.sort((a, b) => a.date.localeCompare(b.date))
+      });
+    });
+    
+    salaryCalculations = calculations.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
   }
 </script>
 
@@ -384,21 +533,28 @@
       <div class="menu-selector">
         <button 
           class="menu-btn" 
-          class:active={!showSalarySettings}
-          on:click={() => showSalarySettings = false}
+          class:active={!showSalarySettings && !showSalaryCalculation}
+          on:click={() => { showSalarySettings = false; showSalaryCalculation = false; }}
         >
           出勤簿表示
         </button>
         <button 
           class="menu-btn" 
           class:active={showSalarySettings}
-          on:click={() => showSalarySettings = true}
+          on:click={() => { showSalarySettings = true; showSalaryCalculation = false; }}
         >
           給料設定
         </button>
+        <button 
+          class="menu-btn" 
+          class:active={showSalaryCalculation}
+          on:click={() => { showSalarySettings = false; showSalaryCalculation = true; }}
+        >
+          給料計算
+        </button>
       </div>
 
-      {#if !showSalarySettings}
+      {#if !showSalarySettings && !showSalaryCalculation}
         <!-- 出勤簿表示 -->
         <div class="filter-section">
           <h3>表示設定</h3>
@@ -551,7 +707,7 @@
             <p>先生または日付を選択して表を表示してください。</p>
           </div>
         {/if}
-      {:else}
+      {:else if showSalarySettings}
         <!-- 給料設定画面 -->
         <div class="salary-settings">
           <h3>給料設定</h3>
@@ -633,6 +789,119 @@
               <p>給料設定がありません</p>
             {/if}
           </div>
+        </div>
+      {:else if showSalaryCalculation}
+        <!-- 給料計算画面 -->
+        <div class="salary-calculation">
+          <h3>給料計算（毎月15日締め）</h3>
+          
+          <div class="period-selector">
+            <h4>計算期間選択</h4>
+            <select bind:value={selectedSalaryPeriod} on:change={calculateSalaries}>
+              {#each generateSalaryPeriods() as period}
+                <option value={period}>{period.label}</option>
+              {/each}
+            </select>
+          </div>
+
+          {#if selectedSalaryPeriod}
+            <div class="period-info">
+              <p><strong>計算期間:</strong> {selectedSalaryPeriod.label}</p>
+              <p><strong>計算式:</strong> 出勤日数 × 交通費 + 1コマあたりの給料 × 授業数</p>
+            </div>
+
+            <!-- 給料計算結果一覧 -->
+            <div class="salary-results">
+              <h4>給料計算結果</h4>
+              {#if salaryCalculations.length > 0}
+                <table class="salary-calculation-table">
+                  <thead>
+                    <tr>
+                      <th>先生名</th>
+                      <th>出勤日数</th>
+                      <th>授業数</th>
+                      <th>交通費単価</th>
+                      <th>授業単価</th>
+                      <th>交通費合計</th>
+                      <th>授業料合計</th>
+                      <th>給料合計</th>
+                      <th>詳細</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each salaryCalculations as calc}
+                      <tr>
+                        <td class="teacher-name-cell">{calc.teacherName}</td>
+                        <td class="number-cell">{calc.workDays}日</td>
+                        <td class="number-cell">{calc.totalClasses}コマ</td>
+                        <td class="number-cell">{calc.transportationFee.toLocaleString()}円</td>
+                        <td class="number-cell">{calc.salaryPerClass.toLocaleString()}円</td>
+                        <td class="number-cell">{calc.totalTransportationFee.toLocaleString()}円</td>
+                        <td class="number-cell">{calc.totalClassFee.toLocaleString()}円</td>
+                        <td class="total-salary-cell">{calc.totalSalary.toLocaleString()}円</td>
+                        <td class="details-cell">
+                          <button class="details-btn" on:click={() => calc.showDetails = !calc.showDetails}>
+                            {calc.showDetails ? '閉じる' : '詳細表示'}
+                          </button>
+                        </td>
+                      </tr>
+                      {#if calc.showDetails}
+                        <tr class="details-row">
+                          <td colspan="9">
+                            <div class="work-details">
+                              <h5>{calc.teacherName}の出勤詳細</h5>
+                              <div class="details-grid">
+                                {#each calc.workDetails as detail}
+                                  <div class="detail-item">
+                                    <div class="detail-date">{detail.date}</div>
+                                    <div class="detail-subjects">
+                                      {#each detail.subjects as subject}
+                                        <span class="detail-subject">{subject}</span>
+                                      {/each}
+                                    </div>
+                                    <div class="detail-classes">{detail.classes}コマ</div>
+                                  </div>
+                                {/each}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      {/if}
+                    {/each}
+                  </tbody>
+                </table>
+
+                <!-- 合計サマリー -->
+                <div class="salary-summary">
+                  <h4>期間合計</h4>
+                  <div class="summary-grid">
+                    <div class="summary-item">
+                      <span class="summary-label">総出勤日数:</span>
+                      <span class="summary-value">{salaryCalculations.reduce((sum, calc) => sum + calc.workDays, 0)}日</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">総授業数:</span>
+                      <span class="summary-value">{salaryCalculations.reduce((sum, calc) => sum + calc.totalClasses, 0)}コマ</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">総交通費:</span>
+                      <span class="summary-value">{salaryCalculations.reduce((sum, calc) => sum + calc.totalTransportationFee, 0).toLocaleString()}円</span>
+                    </div>
+                    <div class="summary-item">
+                      <span class="summary-label">総授業料:</span>
+                      <span class="summary-value">{salaryCalculations.reduce((sum, calc) => sum + calc.totalClassFee, 0).toLocaleString()}円</span>
+                    </div>
+                    <div class="summary-item total">
+                      <span class="summary-label">総給料:</span>
+                      <span class="summary-value">{salaryCalculations.reduce((sum, calc) => sum + calc.totalSalary, 0).toLocaleString()}円</span>
+                    </div>
+                  </div>
+                </div>
+              {:else}
+                <p>給料計算結果がありません。給料設定と出勤データを確認してください。</p>
+              {/if}
+            </div>
+          {/if}
         </div>
       {/if}
     {/if}
@@ -937,9 +1206,234 @@
     background-color: rgba(0, 123, 255, 0.1);
   }
 
-  /* 給料設定のスタイル */
-  .salary-settings {
-    max-width: 800px;
+  /* 給料計算のスタイル */
+  .salary-calculation {
+    max-width: 1200px;
+  }
+
+  .period-selector {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    border: 1px solid #dee2e6;
+  }
+
+  .period-selector h4 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 2px solid #6f42c1;
+    padding-bottom: 0.5rem;
+  }
+
+  .period-selector select {
+    width: 100%;
+    padding: 0.6rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 1em;
+  }
+
+  .period-info {
+    background-color: #e7f3ff;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-bottom: 2rem;
+    border-left: 4px solid #007bff;
+  }
+
+  .period-info p {
+    margin: 0.25rem 0;
+    color: #495057;
+  }
+
+  .salary-results {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .salary-results h4 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 2px solid #6f42c1;
+    padding-bottom: 0.5rem;
+  }
+
+  .salary-calculation-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9em;
+  }
+
+  .salary-calculation-table th {
+    background-color: #6f42c1;
+    color: white;
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-weight: 600;
+    border: 1px solid #6f42c1;
+    font-size: 0.85em;
+  }
+
+  .salary-calculation-table td {
+    padding: 0.75rem 0.5rem;
+    border: 1px solid #dee2e6;
+    text-align: center;
+  }
+
+  .teacher-name-cell {
+    background-color: #f8f9fa;
+    font-weight: 500;
+    text-align: left !important;
+  }
+
+  .number-cell {
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+  }
+
+  .total-salary-cell {
+    background-color: #fff3cd;
+    font-weight: bold;
+    text-align: right !important;
+    font-family: 'Courier New', monospace;
+    color: #856404;
+  }
+
+  .details-cell {
+    text-align: center !important;
+  }
+
+  .details-btn {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 0.25rem 0.5rem;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8em;
+  }
+
+  .details-btn:hover {
+    background-color: #138496;
+  }
+
+  .details-row {
+    background-color: #f8f9fa;
+  }
+
+  .work-details {
+    padding: 1rem;
+    text-align: left;
+  }
+
+  .work-details h5 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #495057;
+  }
+
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .detail-item {
+    background-color: white;
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .detail-date {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.9em;
+  }
+
+  .detail-subjects {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .detail-subject {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.8em;
+    border: 1px solid #bbdefb;
+  }
+
+  .detail-classes {
+    font-weight: 500;
+    color: #28a745;
+    font-size: 0.9em;
+  }
+
+  .salary-summary {
+    background-color: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 2px solid #6f42c1;
+    margin-top: 2rem;
+  }
+
+  .salary-summary h4 {
+    margin-top: 0;
+    color: #6f42c1;
+    text-align: center;
+    border-bottom: 2px solid #6f42c1;
+    padding-bottom: 0.5rem;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: white;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+  }
+
+  .summary-item.total {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+
+  .summary-label {
+    color: #495057;
+  }
+
+  .summary-value {
+    font-family: 'Courier New', monospace;
+    font-weight: 500;
+    color: #28a745;
+  }
+
+  .summary-item.total .summary-value {
+    color: #856404;
+    font-size: 1.2em;
   }
 
   .salary-form {
