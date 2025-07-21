@@ -7,6 +7,7 @@ from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, Atten
 from qr_service import QRService
 from models import db
 import base64
+import openpyxl, requests
 
 
 def register_routes(app):
@@ -15,28 +16,28 @@ def register_routes(app):
         if request.method == 'POST':
             try:
                 data = request.json
-                
+
                 # Validate input
                 if not data.get('name') or not data.get('email'):
                     return jsonify({'error': 'Name and email are required'}), 400
-                
+
                 # Check if user already exists
                 existing_user = User.query.filter_by(email=data['email']).first()
                 if existing_user:
                     return jsonify({'error': 'User with this email already exists'}), 400
-                
+
                 # Create new user
                 user = User(name=data['name'], email=data['email'])
                 db.session.add(user)
                 db.session.commit()
-                
+
                 return jsonify(user.to_dict()), 201
-                
+
             except Exception as e:
                 db.session.rollback()
                 print(f"Error creating user: {e}")
                 return jsonify({'error': 'Failed to create user'}), 500
-        
+
         # GET request
         try:
             users = User.query.all()
@@ -44,8 +45,8 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching users: {e}")
             return jsonify({'error': 'Failed to fetch users'}), 500
-        
-        
+
+
     # Excelからユーザ登録する機能
     @app.route('/api/users/import', methods=['POST'])
     def import_users():
@@ -101,16 +102,16 @@ def register_routes(app):
             data = request.json
             user_id = data.get('user_id')
             target_date = data.get('date', date.today().isoformat())
-            
+
             user = User.query.get_or_404(user_id)
-            
+
             # Generate QR code
             qr_image_io, qr_data = QRService.generate_qr_code(user.name, target_date)
-            
+
             # Convert to base64 for response
             qr_image_io.seek(0)
             qr_base64 = base64.b64encode(qr_image_io.read()).decode('utf-8')
-            
+
             return jsonify({
                 'qr_code': f'data:image/png;base64,{qr_base64}',
                 'qr_data': qr_data
@@ -125,15 +126,15 @@ def register_routes(app):
             data = request.json
             user_id = data.get('user_id')
             target_date = data.get('date', date.today().isoformat())
-            
+
             user = User.query.get_or_404(user_id)
-            
+
             # Generate QR code
             qr_image_io, qr_data = QRService.generate_qr_code(user.name, target_date)
-            
+
             # Send email
             success = QRService.send_qr_email(user.email, user.name, qr_image_io, target_date)
-            
+
             if success:
                 return jsonify({'message': 'QR code sent successfully', 'qr_data': qr_data})
             else:
@@ -145,7 +146,7 @@ def register_routes(app):
         except Exception as e:
             print(f"Error sending QR email: {e}")
             return jsonify({'error': f'Failed to send email: {str(e)}'}), 500
-    
+
     @app.route('/api/send-qr-email-all', methods=['POST'])
     def send_qr_email_all():
         try:
@@ -162,35 +163,35 @@ def register_routes(app):
         try:
             data = request.json
             qr_data = data.get('qr_data')
-            
+
             if not qr_data:
                 return jsonify({'error': 'QR data is required'}), 400
-            
+
             # Parse QR data
             try:
                 user_name, target_date = qr_data.split('|')
             except ValueError:
                 return jsonify({'error': 'Invalid QR code format'}), 400
-            
+
             # Find user
             user = User.query.filter_by(name=user_name).first()
             if not user:
                 return jsonify({'error': 'User not found'}), 404
-            
+
             # Parse date
             try:
                 target_date_obj = datetime.strptime(target_date, '%Y-%m-%d').date()
             except ValueError:
                 return jsonify({'error': 'Invalid date format'}), 400
-            
+
             # Check if attendance record exists for this date
             attendance = Attendance.query.filter_by(
                 user_id=user.id,
                 date=target_date_obj
             ).first()
-            
+
             current_time = datetime.now()
-            
+
             if not attendance:
                 # Create new attendance record - 出勤記録
                 attendance = Attendance(
@@ -221,27 +222,27 @@ def register_routes(app):
             user_id = request.args.get('user_id')
             start_date = request.args.get('start_date')
             end_date = request.args.get('end_date')
-            
+
             query = Attendance.query
-            
+
             if user_id:
                 query = query.filter_by(user_id=user_id)
-            
+
             if start_date:
                 query = query.filter(Attendance.date >= datetime.strptime(start_date, '%Y-%m-%d').date())
-            
+
             if end_date:
                 query = query.filter(Attendance.date <= datetime.strptime(end_date, '%Y-%m-%d').date())
-            
+
             attendances = query.order_by(Attendance.date.desc()).all()
-            
+
             # Include user information
             result = []
             for attendance in attendances:
                 att_dict = attendance.to_dict()
                 att_dict['user'] = attendance.user.to_dict()
                 result.append(att_dict)
-            
+
             return jsonify(result)
         except Exception as e:
             print(f"Error fetching attendance: {e}")
@@ -253,11 +254,11 @@ def register_routes(app):
         try:
             data = request.json
             print(f"Received makeup request data: {data}")  # デバッグ用
-            
+
             # 必須項目のチェック
             required_fields = ['name', 'subject', 'original_date', 'original_period', 'new_date', 'new_period']
             missing_fields = [field for field in required_fields if not data.get(field)]
-            
+
             if missing_fields:
                 return jsonify({'error': f'以下の項目が必要です: {", ".join(missing_fields)}'}), 400
 
@@ -270,13 +271,13 @@ def register_routes(app):
                 new_date=data['new_date'],
                 new_period=data['new_period']
             )
-            
+
             db.session.add(new_request)
             db.session.commit()
-            
+
             print(f"Makeup request created successfully: {new_request.to_dict()}")  # デバッグ用
             return jsonify(new_request.to_dict()), 201
-            
+
         except Exception as e:
             db.session.rollback()
             print(f"Error creating makeup request: {e}")
@@ -291,7 +292,7 @@ def register_routes(app):
         except Exception as e:
             print(f"Error fetching makeup requests: {e}")
             return jsonify({'error': '補講申請の取得に失敗しました'}), 500
-        
+
     # 補講申請のステータス更新（承認・却下）
     @app.route('/api/makeup-requests/<int:id>', methods=['PATCH'])
     def update_makeup_request_status(id):
@@ -320,53 +321,53 @@ def register_routes(app):
             filename = data.get('filename', 'unknown')
             basic_info = data.get('basic_info', [])
             attendance_dates = data.get('attendance_dates', [])
-            
+
             # ImportedDataを作成
             imported_data = ImportedData(filename=filename)
             db.session.add(imported_data)
             db.session.flush()  # IDを取得するためにflush
-            
+
             # BasicInfoを作成
             if basic_info:
                 basic = BasicInfo(imported_data_id=imported_data.id)
-                
+
                 # 基本情報を解析して保存
                 if len(basic_info) >= 1:
                     basic.row1_a = basic_info[0][0] if len(basic_info[0]) > 0 else ''
                     basic.row1_b = basic_info[0][1] if len(basic_info[0]) > 1 else ''
                     basic.row1_c = basic_info[0][2] if len(basic_info[0]) > 2 else ''
                     basic.row1_d = basic_info[0][3] if len(basic_info[0]) > 3 else ''
-                    
+
                     # 氏名などの特定フィールドを抽出
                     if basic_info[0][0] == '氏名' and len(basic_info[0]) > 1:
                         basic.name = basic_info[0][1]
                     if basic_info[0][0] == '所属' and len(basic_info[0]) > 1:
                         basic.department = basic_info[0][1]
-                
+
                 if len(basic_info) >= 2:
                     basic.row2_a = basic_info[1][0] if len(basic_info[1]) > 0 else ''
                     basic.row2_b = basic_info[1][1] if len(basic_info[1]) > 1 else ''
                     basic.row2_c = basic_info[1][2] if len(basic_info[1]) > 2 else ''
                     basic.row2_d = basic_info[1][3] if len(basic_info[1]) > 3 else ''
-                    
+
                     if basic_info[1][0] == '所属' and len(basic_info[1]) > 1:
                         basic.department = basic_info[1][1]
                     if basic_info[1][2] == '開講期間・クラス' and len(basic_info[1]) > 3:
                         basic.period_class = basic_info[1][3]
-                
+
                 if len(basic_info) >= 3:
                     basic.row3_a = basic_info[2][0] if len(basic_info[2]) > 0 else ''
                     basic.row3_b = basic_info[2][1] if len(basic_info[2]) > 1 else ''
                     basic.row3_c = basic_info[2][2] if len(basic_info[2]) > 2 else ''
                     basic.row3_d = basic_info[2][3] if len(basic_info[2]) > 3 else ''
-                    
+
                     if basic_info[2][0] == '授業科目' and len(basic_info[2]) > 1:
                         basic.subject = basic_info[2][1]
                     if basic_info[2][2] == '授業時間' and len(basic_info[2]) > 3:
                         basic.time_slot = basic_info[2][3]
-                
+
                 db.session.add(basic)
-            
+
             # AttendanceDateを作成
             for item in attendance_dates:
                 attendance_date = AttendanceDate(
@@ -380,14 +381,14 @@ def register_routes(app):
                     notes=item.get('notes', '')
                 )
                 db.session.add(attendance_date)
-            
+
             db.session.commit()
-            
+
             return jsonify({
                 'message': 'データが正常に保存されました',
                 'id': imported_data.id
             }), 201
-            
+
         except Exception as e:
             db.session.rollback()
             print(f"Error importing excel data: {e}")
@@ -443,13 +444,13 @@ def register_routes(app):
             teacher_name = data.get('teacher_name')
             salary_per_class = data.get('salary_per_class', 0)
             transportation_fee = data.get('transportation_fee', 0)
-            
+
             if not teacher_name:
                 return jsonify({'error': '先生名は必須です'}), 400
-            
+
             # 既存の設定があるかチェック
             existing_salary = TeacherSalary.query.filter_by(teacher_name=teacher_name).first()
-            
+
             if existing_salary:
                 # 更新
                 existing_salary.salary_per_class = salary_per_class
@@ -464,10 +465,10 @@ def register_routes(app):
                     transportation_fee=transportation_fee
                 )
                 db.session.add(salary_record)
-            
+
             db.session.commit()
             return jsonify(salary_record.to_dict()), 201
-            
+
         except Exception as e:
             db.session.rollback()
             print(f"Error creating/updating teacher salary: {e}")
@@ -493,7 +494,7 @@ def register_routes(app):
             return jsonify({'status': 'healthy', 'database': 'connected'})
         except Exception as e:
             return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
-        
+
     @app.route('/api/makeup-request/<int:id>', methods=['PATCH'])
     def update_makeup_request(id):
         try:
@@ -501,7 +502,7 @@ def register_routes(app):
             req = MakeUpClass.query.get(id)
             if not req:
                 return jsonify({'error': '該当の申請が見つかりません'}), 404
-            
+
             if 'status' in data:
                 req.status = data['status']
                 db.session.commit()
@@ -513,3 +514,51 @@ def register_routes(app):
             db.session.rollback()
             print(f"更新エラー: {e}")
             return jsonify({'error': '更新に失敗しました'}), 500
+
+    @app.route('/api/excel-export', methods=['GET'])
+    def export_excel(filename='attendance.xlsx'):
+        """
+        Export attendance data to an Excel file.
+
+        :param data: List of dictionaries containing attendance data.
+        :param filename: Name of the output Excel file.
+        """
+# Create a new workbook and select the active worksheet
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    api_url = "http://localhost:3001/api/teacher-salaries"
+    response = requests.get(api_url)
+    try:
+        json_data = response.json()
+    except:
+        print(response.status_code)
+        print(response.text)
+    len = len(json_data['id'])
+    teacher_name = json_data['teacher_name']
+    salary_per_class = json_data['salary_per_class']
+    transportation_fee = json_data['transportation_fee']
+    sheet.title = teacher_name
+
+    cell_data = [
+        ['先生名', '1コマあたりの給料', '交通費'],
+        [teacher_name, salary_per_class, transportation_fee]
+    ]	# Define headers based on keys of the first dictionary in data
+    for row_i, row_data in enumerate(cell_data): # 行ごとのデータ取得
+        for col_i, data in enumerate(row_data): #行内の列ごとのデータ取得
+            col_letter = chr(ord("A")+col_i) # 列アルファベット名の生成(A,B,...とAにcol_iを足して自動生成)
+            address = f"{col_letter}{row_i+1}" # セルの位置
+            sheet[address] = data # 値格納
+        headers = data[0].keys()
+        sheet.append(headers)
+
+        # Append each row of data
+        for entry in data:
+            sheet.append(entry.values())
+
+# Save the workbook to a file
+    workbook.save(filename)
+
+    print(f"Excel file '{filename}' has been created successfully.")
+
+
+    export_excel()
