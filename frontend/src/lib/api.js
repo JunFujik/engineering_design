@@ -21,7 +21,9 @@ export const qrAPI = {
 export const attendanceAPI = {
   check: (data) => api.post('/attendance/check', data),
   getAll: (params) => api.get('/attendance', { params }),
-  requestMakeUpClass: (data) => api.post('/makeup-request', data) // 補講申請
+  requestMakeUpClass: (data) => api.post('/makeup-requests', data), // 補講申請
+  updateMakeUpClassStatus: (id, status) =>
+    api.patch(`/makeup-requests/${id}`, { status }), // ← 追加
 };
 
 export const authAPI = {
@@ -41,8 +43,9 @@ export const importAPI = {
 
 // 補講申請API
 export const makeupAPI = {
+  getAll: () => api.get('/makeup-requests'),
   create: (data) => api.post('/makeup-request', data),
-  getAll: () => api.get('/makeup-requests')
+  update: (id, data) => api.patch(`/makeup-requests/${id}`, data)  // ← これが足りないと PATCH 飛ばない
 };
 
 // 先生給料設定API
