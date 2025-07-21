@@ -512,6 +512,50 @@
     
     salaryCalculations = calculations.sort((a, b) => a.teacherName.localeCompare(b.teacherName));
   }
+  
+  function downloadCSV() {
+    if (!salaryCalculations || salaryCalculations.length === 0) {
+      alert('CSVでダウンロードできるデータがありません。');
+      return;
+    }
+
+    const BOM = "\uFEFF";
+    const headers = [
+      "先生名",
+      "出勤日数",
+      "授業数",
+      "交通費単価",
+      "授業単価",
+      "交通費合計",
+      "授業料合計",
+      "給料合計"
+    ];
+    let csvContent = headers.join(",") + "\r\n";
+
+    salaryCalculations.forEach(calc => {
+      const row = [
+        `"${calc.teacherName}"`,
+        calc.workDays,
+        calc.totalClasses,
+        calc.transportationFee,
+        calc.salaryPerClass,
+        calc.totalTransportationFee,
+        calc.totalClassFee,
+        calc.totalSalary
+      ];
+      csvContent += row.join(",") + "\r\n";
+    });
+
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `給料計算結果_${selectedSalaryPeriod.label}.csv`);
+    document.body.appendChild(link); // Required for Firefox
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <div class="attendance-viewer">
@@ -794,6 +838,7 @@
         <!-- 給料計算画面 -->
         <div class="salary-calculation">
           <h3>給料計算（毎月15日締め）</h3>
+          <button on:click={downloadCSV} class="csv-download-btn">CSVダウンロード</button>
           
           <div class="period-selector">
             <h4>計算期間選択</h4>
@@ -1592,6 +1637,22 @@
     border: 1px solid #c3e6cb;
     border-radius: 4px;
   }
+
+  .csv-download-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-bottom: 1rem;
+  }
+
+  .csv-download-btn:hover {
+    background-color: #218838;
+  }
+
 
   @media (max-width: 768px) {
     .card {
