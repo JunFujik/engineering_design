@@ -6,7 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 import smtplib
 import os
-from datetime import datetime
+from datetime import date
 from models import User
 
 class QRService:
