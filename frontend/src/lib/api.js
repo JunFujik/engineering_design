@@ -55,4 +55,9 @@ export const teacherSalaryAPI = {
   delete: (id) => api.delete(`/teacher-salaries/${id}`)
 };
 
+export const paidLeaveAPI = {
+  create: (data) => api.post('/paid-leave', data),
+  getAll: () => api.get('/paid-leave'),
+};
+
 export default api;

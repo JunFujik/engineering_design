@@ -156,3 +156,24 @@ class TeacherSalary(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+# 有給申請モデル
+class PaidLeaveRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    days_requested = db.Column(db.Float, nullable=False)  # 自動計算された日数
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.String(20), default='pending')  # 承認ステータス
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'start_date': self.start_date.isoformat(),
+            'end_date': self.end_date.isoformat(),
+            'days_requested': self.days_requested,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'status': self.status
+        }

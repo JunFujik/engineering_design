@@ -5,6 +5,7 @@ from datetime import datetime, date
 from database import db
 from models import User, Attendance, MakeUpClass, ImportedData, BasicInfo, AttendanceDate, TeacherSalary
 from qr_service import QRService
+from models import PaidLeaveRequest
 from models import db
 import base64
 
@@ -514,3 +515,36 @@ def register_routes(app):
             db.session.rollback()
             print(f"Error updating makeup request status: {e}")
             return jsonify({'error': 'ステータスの更新に失敗しました'}), 500
+    # 有給申請の作成
+    @app.route('/api/paid-leave', methods=['POST'])
+    def create_paid_leave():
+        data = request.get_json()
+
+        try:
+            name = data['name']
+            start_date = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+            end_date = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+
+            if end_date < start_date:
+                return jsonify({'error': '終了日は開始日以降にしてください'}), 400
+
+            days_requested = (end_date - start_date).days + 1  # 1日単位で計算
+
+            new_request = PaidLeaveRequest(
+                name=name,
+                start_date=start_date,
+                end_date=end_date,
+                days_requested=days_requested  # ← 修正ここ！
+            )
+            db.session.add(new_request)
+            db.session.commit()
+
+            return jsonify(new_request.to_dict()), 201
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+# GET: 有給申請一覧の取得
+    @app.route('/api/paid-leave', methods=['GET'])
+    def get_paid_leave_requests():
+        requests = PaidLeaveRequest.query.order_by(PaidLeaveRequest.created_at.desc()).all()
+        return jsonify([r.to_dict() for r in requests])

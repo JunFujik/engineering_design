@@ -6,6 +6,7 @@
   import StaffLogin from './components/StaffLogin.svelte';
   import Admin from './components/Admin.svelte';
   import Staff from './components/staff.svelte';
+  import PaidLeave from './components/PaidLeave.svelte';
   import { authAPI } from './lib/api.js';
 
   let activeTab = 'qr-scan';
@@ -17,7 +18,8 @@
 
   const tabs = [
     { id: 'qr-scan', label: 'QRコード読取' },
-    { id: 'makeup', label: '補講申請' }
+    { id: 'makeup', label: '補講申請' },
+    { id: 'paid-leave', label: '有給申請' }
   ];
 
   onMount(() => {
@@ -111,11 +113,13 @@
     </div>
 
     <div class="tab-content">
-      {#if activeTab === 'qr-scan'}
-        <QRScanner />
-      {:else if activeTab === 'makeup'}
-        <MakeUpClassRequest />
-      {/if}
+    {#if activeTab === 'qr-scan'}
+      <QRScanner />
+    {:else if activeTab === 'makeup'}
+      <MakeUpClassRequest />
+    {:else if activeTab === 'paid-leave'}
+      <PaidLeave /> <!-- ← これを追加 -->
+    {/if}
     </div>
 
     {#if showLogin}
