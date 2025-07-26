@@ -48,7 +48,7 @@
       補講申請承認
     </button>
     <button class="nav-btn" class:active={activeTab === 'excel-import'} on:click={() => activeTab = 'excel-import'}>
-      Excelインポート
+      出勤簿作成
     </button>
     <button class="nav-btn" class:active={activeTab === 'attendance-tables'} on:click={() => activeTab = 'attendance-tables'}>
       出勤簿表示

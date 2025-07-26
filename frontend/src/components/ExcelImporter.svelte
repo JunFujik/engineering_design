@@ -447,7 +447,7 @@
 
 <div class="excel-importer">
   <div class="card">
-    <h2>Excelファイルインポート</h2>
+    <h2>出勤簿作成</h2>
     
     {#if error}
       <p class="error">{error}</p>
