@@ -8,12 +8,14 @@ import smtplib
 import os
 from datetime import date
 from models import User
+import binascii
 
 class QRService:
     @staticmethod
     def generate_qr_code(user_name, date):
         """Generate QR code containing user name and date"""
         # Create QR data
+        user_name=binascii.hexlify(user_name.encode('utf-8')).decode('utf-8')
         qr_data = f"{user_name}|{date}"
         
         # Generate QR code
