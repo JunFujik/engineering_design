@@ -8,6 +8,8 @@ from qr_service import QRService
 from models import PaidLeaveRequest
 from models import db
 import base64
+import binascii
+
 
 
 def register_routes(app):
@@ -174,7 +176,12 @@ def register_routes(app):
                 return jsonify({'error': 'Invalid QR code format'}), 400
             
             # Find user
-            user = User.query.filter_by(name=user_name).first()
+            try:
+                utf_name=binascii.unhexlify(user_name).decode('utf-8')
+                user = User.query.filter_by(name=utf_name).first()
+            except Exception:
+                user = User.query.filter_by(name=user_name).first()
+            
             if not user:
                 return jsonify({'error': 'User not found'}), 404
             
