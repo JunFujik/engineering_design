@@ -75,11 +75,11 @@
         id="qr-input"
         type="text" 
         bind:value={manualInput}
-        placeholder="QRデータを入力 (例: 山田太郎|2025-01-15)"
+        placeholder="QRコード読み取りor「産技太郎|2025-01-25」"
         disabled={loading}
       />
       <small class="input-help">
-        QRコードから読み取った文字列を入力してください。形式：「ユーザー名|日付」
+        QRコードを読み取るか「ユーザー名|日付」の形式で入力してください。
       </small>
     </div>
     <div class="button-group">

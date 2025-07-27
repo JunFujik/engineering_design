@@ -288,7 +288,7 @@ def register_routes(app):
         except Exception as e:
             db.session.rollback()
             print(f"Error creating makeup request: {e}")
-            return jsonify({'error': f'補講申請の作成に失敗しました: {str(e)}'}), 500
+            return jsonify({'error': f'補講日の反映申請の作成に失敗しました: {str(e)}'}), 500
 
     # 補講申請一覧取得
     @app.route('/api/makeup-requests', methods=['GET'])
@@ -298,7 +298,7 @@ def register_routes(app):
             return jsonify([req.to_dict() for req in requests])
         except Exception as e:
             print(f"Error fetching makeup requests: {e}")
-            return jsonify({'error': '補講申請の取得に失敗しました'}), 500
+            return jsonify({'error': '補講日の反映申請の取得に失敗しました'}), 500
         
 
     # 新しいエンドポイント: インポートデータの保存

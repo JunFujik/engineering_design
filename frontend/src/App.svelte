@@ -18,7 +18,7 @@
 
   const tabs = [
     { id: 'qr-scan', label: 'QRコード読取' },
-    { id: 'makeup', label: '補講申請' },
+    { id: 'makeup', label: '補講反映' },
     { id: 'paid-leave', label: '有給申請' }
   ];
 

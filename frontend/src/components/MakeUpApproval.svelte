@@ -41,7 +41,7 @@
 </script>
 
 <div class="card">
-  <h2>補講申請 {activeTab === 'pending' ? '（未処理）' : '履歴'}</h2>
+  <h2>補講反映 {activeTab === 'pending' ? '（未処理）' : '履歴'}</h2>
 
   <div class="tabs">
     <button on:click={() => activeTab = 'pending'} class:active={activeTab === 'pending'}>未処理</button>

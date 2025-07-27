@@ -58,7 +58,7 @@
     try {
       console.log('送信データ:', formData); // デバッグ用
       await makeupAPI.create(formData);
-      success = '補講申請を送信しました。';
+      success = '補講反映申請を送信しました。';
       // フォームをリセット
       formData = {
         name: '',
@@ -79,7 +79,8 @@
 </script>
 
 <div class="card">
-  <h2>補講申請</h2>
+  <h2>補講反映</h2>
+  補講日が決定したら入力してください
 
   {#if success}
     <p class="success">{success}</p>
@@ -99,7 +100,7 @@
     </div>
 
     <fieldset>
-      <legend>変更前の日時</legend>
+      <legend>補講対象授業の日時</legend>
       <div class="form-group">
         <label for="original_date">日付</label>
         <select id="original_date" bind:value={formData.original_date} required>
@@ -121,7 +122,7 @@
     </fieldset>
 
     <fieldset>
-      <legend>変更後の日時</legend>
+      <legend>補講日の日時</legend>
       <div class="form-group">
         <label for="new_date">日付</label>
         <select id="new_date" bind:value={formData.new_date} required>
