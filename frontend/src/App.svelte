@@ -95,7 +95,6 @@
           <button class="logout-btn" on:click={handleLogout}>ログアウト</button>
         {:else}
           <button class="login-btn" on:click={() => showLogin = true}>管理者ログイン</button>
-          <button class="login-btn" on:click={() => showStaffLogin = true}>連絡員ログイン</button>
         {/if}
       </div>
     </header>
